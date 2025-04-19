@@ -5,13 +5,13 @@ import subprocess
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Настройка логирования
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 TOKEN = '7762900402:AAH_Tdrl2NVqlCAlki5BntmgnechHX_dIjE'
 
-# Абсолютный путь к файлу cookies (экспортированному в формате Netscape)
+
 cookies_path = '/workspaces/codespaces-blank/youtube.com_cookies.txt'
 
 logger.info("Текущий рабочий каталог: %s", os.getcwd())
@@ -38,7 +38,7 @@ def download_video(url: str) -> str:
     logger.info("Результат info (stderr с cookies): %s", info_result.stderr)
     file_name = info_result.stdout.strip()
     
-    # Если не удалось получить имя, пробуем без cookies
+   
     if not file_name:
         logger.warning("Не удалось получить имя файла с cookies, пробую без cookies.")
         cmd_info = [
@@ -71,11 +71,11 @@ def download_video(url: str) -> str:
     if download_result.returncode != 0:
         raise Exception("Ошибка загрузки: " + download_result.stderr)
     
-    # Формируем имя итогового файла с расширением .mp3
+   
     base_name = file_name.rsplit('.', 1)[0]
     final_audio = base_name + ".mp3"
     if not os.path.exists(final_audio):
-        # Если итогового файла нет, возвращаем исходное имя
+        
         final_audio = file_name
     return final_audio
 
