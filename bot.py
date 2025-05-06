@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-TOKEN = os.environ.get('TOKEN')  # Получаем токен из переменной окружения
+TOKEN = os.environ.get('7762900402:AAH_Tdrl2NVqlCAlki5BntmgnechHX_dIjE')  # Получаем токен из переменной окружения
 cookies_path = os.environ.get('COOKIES_PATH', 'youtube.com_cookies.txt')  # Путь к cookies из переменной окружения или по умолчанию
 
 logger.info("Текущий рабочий каталог: %s", os.getcwd())
