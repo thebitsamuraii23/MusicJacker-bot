@@ -5,14 +5,11 @@ import subprocess
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-TOKEN = '7762900402:AAH_Tdrl2NVqlCAlki5BntmgnechHX_dIjE'
-
-
-cookies_path = '/workspaces/codespaces-blank/youtube.com_cookies.txt'
+TOKEN = os.environ.get('TOKEN')  # Получаем токен из переменной окружения
+cookies_path = os.environ.get('COOKIES_PATH', 'youtube.com_cookies.txt')  # Путь к cookies из переменной окружения или по умолчанию
 
 logger.info("Текущий рабочий каталог: %s", os.getcwd())
 if os.path.exists(cookies_path):
@@ -20,42 +17,26 @@ if os.path.exists(cookies_path):
 else:
     logger.error("Файл cookies не найден по указанному пути: %s", cookies_path)
 
-def download_video(url: str) -> str:
+def download_video(url: str) -> tuple[str, str]:
     """
-    Определяет имя видеофайла, затем запускает скачивание с конвертацией через yt-dlp
-    с использованием subprocess. Возвращает имя итогового аудиофайла (с расширением .mp3).  
+    Скачивает и конвертирует видео в mp3 с фиксированным именем файла output.mp3.
+    Возвращает (имя итогового аудиофайла, оригинальный title).
     """
-    # Пытаемся получить имя файла с cookies
-    cmd_info = [
+    # Получаем title
+    cmd_title = [
         "yt-dlp",
         "--cookies", cookies_path,
-        "--print", "%(title)s.%(ext)s",
+        "--print", "%(title)s",
         "--skip-download",
         url
     ]
-    info_result = subprocess.run(cmd_info, capture_output=True, text=True)
-    logger.info("Результат info (stdout с cookies): %s", info_result.stdout)
-    logger.info("Результат info (stderr с cookies): %s", info_result.stderr)
-    file_name = info_result.stdout.strip()
-    
-   
-    if not file_name:
-        logger.warning("Не удалось получить имя файла с cookies, пробую без cookies.")
-        cmd_info = [
-            "yt-dlp",
-            "--print", "%(title)s.%(ext)s",
-            "--skip-download",
-            url
-        ]
-        info_result = subprocess.run(cmd_info, capture_output=True, text=True)
-        logger.info("Результат info (stdout без cookies): %s", info_result.stdout)
-        logger.info("Результат info (stderr без cookies): %s", info_result.stderr)
-        file_name = info_result.stdout.strip()
-    
-    if not file_name:
-        raise Exception("Не удалось определить имя файла для видео. Проверьте, доступно ли видео и корректны ли cookies.")
-    
-    # Запускаем скачивание и конвертацию с указанием пути к ffmpeg
+    info_result = subprocess.run(cmd_title, capture_output=True, text=True)
+    title = info_result.stdout.strip()
+    if not title:
+        title = "Музыка с YouTube"
+
+    # Скачиваем аудио с фиксированным именем
+    output_name = "output.%(ext)s"
     cmd_download = [
         "yt-dlp",
         "--cookies", cookies_path,
@@ -64,48 +45,34 @@ def download_video(url: str) -> str:
         "--extract-audio",
         "--audio-format", "mp3",
         "--audio-quality", "192K",
-        "--output", "%(title)s.%(ext)s",
+        "--output", output_name,
         url
     ]
     download_result = subprocess.run(cmd_download, capture_output=True, text=True)
     if download_result.returncode != 0:
         raise Exception("Ошибка загрузки: " + download_result.stderr)
-    
-   
-    base_name = file_name.rsplit('.', 1)[0]
-    final_audio = base_name + ".mp3"
+    final_audio = "output.mp3"
     if not os.path.exists(final_audio):
-        
-        final_audio = file_name
-    return final_audio
+        raise Exception("Файл не найден после скачивания.")
+    return final_audio, title
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-       ' Привет! Я бот для скачивания музыки с YouTube. Отправь мне ссылку на видео, и я пришлю MP3. '
-        'Используй на свой страх и риск! '
-        'Каким образом работает бот? '
-        'Бот принимает ссылку на видео с YouTube, скачивает видео, конвертирует его в MP3 и отправляет вам. '
-        'Но, по мерам использования и правилам YouTube, данный бот не является совсем легальным. '
-        'Поэтому, используйте его на свой страх и риск! '
-        'Для начала работы отправьте ссылку на видео с YouTube. '
-        'Я не ношу ответственности за ваши действия! '
+       'Привет! Я бот для скачивания музыки с YouTube. Отправь мне ссылку на видео, и я пришлю MP3.\n'
+        'Используй на свой страх и риск!\n'
+        'Бот принимает ссылку на видео с YouTube, скачивает видео, конвертирует его в MP3 и отправляет вам.\n'
+        'Для начала работы отправьте ссылку на видео с YouTube.\n'
+        'Я не несу ответственности за ваши действия!\n'
         'Приятного использования!\n'
-        'Hello! I am a bot for downloading music from YouTube. '
-        'Use it at your own risk! '
-        'How does the bot work? '
-        'The bot takes a YouTube video link, downloads the video, converts it to MP3, and sends it to you. '
-        'However, according to the terms of use and YouTube guidelines, this bot is not entirely legal. '
-        'So, use it at your own risk! '
-        'To get started, send a YouTube video link. '
-        'I am not responsible for your actions! '
-        'Enjoy using it!'
+        '---\n'
+        'Hello! I am a bot for downloading music from YouTube. Use it at your own risk!'
     )
 
 async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     chat_id = update.message.chat_id
     msg = await update.message.reply_text("Проверяю ссылку...")
-    
+
     if ("youtube.com" not in url) and ("youtu.be" not in url):
         await msg.edit_text("Это не ссылка на YouTube. Отправьте корректную ссылку.")
         return
@@ -113,8 +80,8 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await msg.edit_text("Скачиваю и конвертирую... Подождите.")
     try:
         loop = asyncio.get_event_loop()
-        audio_file = await loop.run_in_executor(None, download_video, url)
-        
+        audio_file, title = await loop.run_in_executor(None, download_video, url)
+
         # Проверка размера файла
         file_size = os.path.getsize(audio_file)
         if file_size > 50 * 1024 * 1024:
@@ -123,12 +90,12 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         with open(audio_file, 'rb') as audio:
-            await context.bot.send_audio(chat_id=chat_id, audio=audio, title=audio_file.rsplit('.', 1)[0])
+            await context.bot.send_audio(chat_id=chat_id, audio=audio, title=title)
         await msg.edit_text("Готово! Музыка отправлена.")
         os.remove(audio_file)
     except Exception as e:
         logger.error("Ошибка при скачивании: %s", str(e))
-        await msg.edit_text("Что-то пошло не так. Проверьте ссылку или попробуйте позже!")
+        await msg.edit_text(f"Что-то пошло не так. Проверьте ссылку или попробуйте позже!\n{str(e)}")
 
 def main():
     app = Application.builder().token(TOKEN).build()
