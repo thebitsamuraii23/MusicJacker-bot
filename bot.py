@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-TOKEN = os.environ.get('7762900402:AAH_Tdrl2NVqlCAlki5BntmgnechHX_dIjE')  # Получаем токен из переменной окружения
+TOKEN = "7762900402:AAH_Tdrl2NVqlCAlki5BntmgnechHX_dIjE"  # Токен бота прописан явно
 cookies_path = os.environ.get('COOKIES_PATH', 'youtube.com_cookies.txt')  # Путь к cookies из переменной окружения или по умолчанию
 
 logger.info("Текущий рабочий каталог: %s", os.getcwd())
@@ -35,8 +35,8 @@ def download_video(url: str) -> tuple[str, str]:
     if not title:
         title = "Музыка с YouTube"
 
-    # Скачиваем аудио с фиксированным именем
-    output_name = "output.%(ext)s"
+    # Скачиваем аудио с фиксированным именем output.mp3
+    output_name = "output.mp3"
     cmd_download = [
         "yt-dlp",
         "--cookies", cookies_path,
@@ -90,7 +90,12 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         with open(audio_file, 'rb') as audio:
-            await context.bot.send_audio(chat_id=chat_id, audio=audio, title=title)
+            await context.bot.send_audio(
+                chat_id=chat_id,
+                audio=audio,
+                title=title,
+                filename="output.mp3"  # Имя файла для пользователя всегда output.mp3
+            )
         await msg.edit_text("Готово! Музыка отправлена.")
         os.remove(audio_file)
     except Exception as e:
