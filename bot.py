@@ -2,6 +2,8 @@ import os
 import logging
 import asyncio
 import subprocess
+import tempfile
+import shutil
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from dotenv import load_dotenv
@@ -24,21 +26,14 @@ if os.path.exists(cookies_path):
 else:
     logger.error("Файл cookies не найден по указанному пути: %s", cookies_path)
 
-REQUIRED_CHANNEL = "@ytdlpdeveloper"
-
-async def check_subscription(user_id: int, bot) -> bool:
-    try:
-        member = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
-        return member.status in ("member", "administrator", "creator")
-    except Exception as e:
-        logger.warning(f"Не удалось проверить подписку: {e}")
-        return False
-
 def download_video(url: str) -> tuple[str, str]:
     """
-    Скачивает и конвертирует видео в mp3 с фиксированным именем файла output.mp3.
-    Возвращает (имя итогового аудиофайла, оригинальный title).
+    Скачивает и конвертирует видео в mp3 с фиксированным именем файла output.mp3 в уникальной временной папке.
+    Возвращает (путь к итоговому аудиофайлу, оригинальный title).
     """
+    temp_dir = tempfile.mkdtemp()
+    output_name = os.path.join(temp_dir, "output.mp3")
+
     cmd_title = [
         "yt-dlp",
         "--cookies", cookies_path,
@@ -51,7 +46,6 @@ def download_video(url: str) -> tuple[str, str]:
     if not title:
         title = "Музыка с YouTube"
 
-    output_name = "output.mp3"
     cmd_download = [
         "yt-dlp",
         "--cookies", cookies_path,
@@ -65,34 +59,26 @@ def download_video(url: str) -> tuple[str, str]:
     ]
     download_result = subprocess.run(cmd_download, capture_output=True, text=True)
     if download_result.returncode != 0:
+        shutil.rmtree(temp_dir)
         raise Exception("Ошибка загрузки: " + download_result.stderr)
-    final_audio = "output.mp3"
-    if not os.path.exists(final_audio):
+    if not os.path.exists(output_name):
+        shutil.rmtree(temp_dir)
         raise Exception("Файл не найден после скачивания.")
-    return final_audio, title
+    return output_name, title
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-    'Привет! Я бот для скачивания музыки с YouTube. Для начала работы с ботом, отправьте ссылку на YouTube или YT Music (не плейлист) и бот'
-    'Загрузит ее вам в формате MP3'
-    'Загруженное вами музыка, обрабатывается в самом высоком качестве и отправляется вам.'
-    'для начала работы с ботом, пожалуйста подпишитесь на канал @ytdlpdeveloper. Приятного использования!'
- 
-        
+        'Привет! Я бот для скачивания музыки с YouTube.\n\n'
+        'Для начала работы с ботом, отправьте ссылку на YouTube или YT Music (не плейлист), '
+        'и бот загрузит её вам в формате MP3.\n\n'
+        'Загруженная вами музыка обрабатывается в самом высоком качестве и отправляется вам.\n\n'
+        'Для начала работы с ботом, пожалуйста подпишитесь на канал @ytdlpdeveloper.\n'
+        'Приятного использования!'
     )
+
 async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    chat_id = update.message.chat_id
-
-    
-    is_subscribed = await check_subscription(user_id, context.bot)
-    if not is_subscribed:
-        await update.message.reply_text(
-            f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова."
-        )
-        return
-
     url = update.message.text.strip()
+    chat_id = update.message.chat_id
     msg = await update.message.reply_text("Проверяю ссылку...")
 
     if ("youtube.com" not in url) and ("youtu.be" not in url):
@@ -107,7 +93,7 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file_size = os.path.getsize(audio_file)
         if file_size > 50 * 1024 * 1024:
             await msg.edit_text("Файл слишком большой (>50 МБ). Попробуйте другое видео.")
-            os.remove(audio_file)
+            shutil.rmtree(os.path.dirname(audio_file))
             return
 
         with open(audio_file, 'rb') as audio:
@@ -118,7 +104,7 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 filename="output.mp3"
             )
         await msg.edit_text("Готово! Музыка отправлена.")
-        os.remove(audio_file)
+        shutil.rmtree(os.path.dirname(audio_file))
     except Exception as e:
         logger.error("Ошибка при скачивании: %s", str(e))
         await msg.edit_text(f"Что-то пошло не так. Проверьте ссылку или попробуйте позже!\n{str(e)}")
