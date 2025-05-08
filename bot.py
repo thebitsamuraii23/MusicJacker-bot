@@ -73,24 +73,12 @@ def download_video(url: str) -> tuple[str, str]:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-       ' Привет! Я бот для скачивания музыки с YouTube. Отправь мне ссылку на видео, и я пришлю MP3. '
-        'Используй на свой страх и риск! '
-        'Каким образом работает бот? '
-        'Бот принимает ссылку на видео с YouTube, скачивает видео, конвертирует его в MP3 и отправляет вам. '
-        'Но, по мерам использования и правилам YouTube, данный бот не является совсем легальным. '
-        'Поэтому, используйте его на свой страх и риск! '
-        'Для начала работы отправьте ссылку на видео с YouTube. '
-        'Я не ношу ответственности за ваши действия! '
-        'Приятного использования!\n'
-        'Hello! I am a bot for downloading music from YouTube. '
-        'Use it at your own risk! '
-        'How does the bot work? '
-        'The bot takes a YouTube video link, downloads the video, converts it to MP3, and sends it to you. '
-        'However, according to the terms of use and YouTube guidelines, this bot is not entirely legal. '
-        'So, use it at your own risk! '
-        'To get started, send a YouTube video link. '
-        'I am not responsible for your actions! '
-        'Enjoy using it!'
+    'Привет! Я бот для скачивания музыки с YouTube. Для начала работы с ботом, отправьте ссылку на YouTube или YT Music (не плейлист) и бот'
+    'Загрузит ее вам в формате MP3.
+    'Загруженное вами музыка, обрабатывается в самом высоком качестве и отправляется вам.'
+    'для начала работы с ботом, пожалуйста подпишитесь на канал @ytdlpdeveloper'
+    'Приятного использования!'
+        
     )
 async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
