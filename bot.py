@@ -4,12 +4,19 @@ import asyncio
 import subprocess
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-TOKEN = "7762900402:AAH_Tdrl2NVqlCAlki5BntmgnechHX_dIjE"  # Токен бота прописан явно
-cookies_path = os.environ.get('COOKIES_PATH', 'youtube.com_cookies.txt')  # Путь к cookies из переменной окружения или по умолчанию
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    logger.critical("TELEGRAM_BOT_TOKEN не найден в переменных окружения.")
+    raise ValueError("TELEGRAM_BOT_TOKEN не найден в переменных окружения.")
+
+cookies_path = os.getenv('COOKIES_PATH', 'youtube.com_cookies.txt')
 
 logger.info("Текущий рабочий каталог: %s", os.getcwd())
 if os.path.exists(cookies_path):
