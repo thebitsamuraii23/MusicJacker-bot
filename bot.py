@@ -26,7 +26,7 @@ if os.path.exists(cookies_path):
 else:
     logger.error("Файл cookies не найден по указанному пути: %s", cookies_path)
 
-REQUIRED_CHANNEL = "@ytdlpdeveloper"  # Замените на свой канал
+REQUIRED_CHANNEL = "@ytdlpdeveloper" 
 
 async def check_subscription(user_id: int, bot) -> bool:
     try:
@@ -90,7 +90,7 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.message.chat_id
 
-    # Проверка подписки
+    
     is_subscribed = await check_subscription(user_id, context.bot)
     if not is_subscribed:
         await update.message.reply_text(
