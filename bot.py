@@ -24,12 +24,21 @@ if os.path.exists(cookies_path):
 else:
     logger.error("Файл cookies не найден по указанному пути: %s", cookies_path)
 
+REQUIRED_CHANNEL = "@ytdlpdeveloper"
+
+async def check_subscription(user_id: int, bot) -> bool:
+    try:
+        member = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
+        return member.status in ("member", "administrator", "creator")
+    except Exception as e:
+        logger.warning(f"Не удалось проверить подписку: {e}")
+        return False
+
 def download_video(url: str) -> tuple[str, str]:
     """
     Скачивает и конвертирует видео в mp3 с фиксированным именем файла output.mp3.
     Возвращает (имя итогового аудиофайла, оригинальный title).
     """
-    # Получаем title
     cmd_title = [
         "yt-dlp",
         "--cookies", cookies_path,
@@ -42,7 +51,6 @@ def download_video(url: str) -> tuple[str, str]:
     if not title:
         title = "Музыка с YouTube"
 
-    # Скачиваем аудио с фиксированным именем output.mp3
     output_name = "output.mp3"
     cmd_download = [
         "yt-dlp",
@@ -65,19 +73,38 @@ def download_video(url: str) -> tuple[str, str]:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-       'Привет! Я бот для скачивания музыки с YouTube. Отправь мне ссылку на видео, и я пришлю MP3.\n'
-        'Используй на свой страх и риск!\n'
-        'Бот принимает ссылку на видео с YouTube, скачивает видео, конвертирует его в MP3 и отправляет вам.\n'
-        'Для начала работы отправьте ссылку на видео с YouTube.\n'
-        'Я не несу ответственности за ваши действия!\n'
+       ' Привет! Я бот для скачивания музыки с YouTube. Отправь мне ссылку на видео, и я пришлю MP3. '
+        'Используй на свой страх и риск! '
+        'Каким образом работает бот? '
+        'Бот принимает ссылку на видео с YouTube, скачивает видео, конвертирует его в MP3 и отправляет вам. '
+        'Но, по мерам использования и правилам YouTube, данный бот не является совсем легальным. '
+        'Поэтому, используйте его на свой страх и риск! '
+        'Для начала работы отправьте ссылку на видео с YouTube. '
+        'Я не ношу ответственности за ваши действия! '
         'Приятного использования!\n'
-        '---\n'
-        'Hello! I am a bot for downloading music from YouTube. Use it at your own risk!'
+        'Hello! I am a bot for downloading music from YouTube. '
+        'Use it at your own risk! '
+        'How does the bot work? '
+        'The bot takes a YouTube video link, downloads the video, converts it to MP3, and sends it to you. '
+        'However, according to the terms of use and YouTube guidelines, this bot is not entirely legal. '
+        'So, use it at your own risk! '
+        'To get started, send a YouTube video link. '
+        'I am not responsible for your actions! '
+        'Enjoy using it!'
     )
-
 async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = update.message.text.strip()
+    user_id = update.effective_user.id
     chat_id = update.message.chat_id
+
+    
+    is_subscribed = await check_subscription(user_id, context.bot)
+    if not is_subscribed:
+        await update.message.reply_text(
+            f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова."
+        )
+        return
+
+    url = update.message.text.strip()
     msg = await update.message.reply_text("Проверяю ссылку...")
 
     if ("youtube.com" not in url) and ("youtu.be" not in url):
@@ -89,7 +116,6 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
         loop = asyncio.get_event_loop()
         audio_file, title = await loop.run_in_executor(None, download_video, url)
 
-        # Проверка размера файла
         file_size = os.path.getsize(audio_file)
         if file_size > 50 * 1024 * 1024:
             await msg.edit_text("Файл слишком большой (>50 МБ). Попробуйте другое видео.")
@@ -101,7 +127,7 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=chat_id,
                 audio=audio,
                 title=title,
-                filename="output.mp3"  # Имя файла для пользователя всегда output.mp3
+                filename="output.mp3"
             )
         await msg.edit_text("Готово! Музыка отправлена.")
         os.remove(audio_file)
