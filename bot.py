@@ -74,7 +74,7 @@ def download_video(url: str) -> tuple[str, str]:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
     'Привет! Я бот для скачивания музыки с YouTube. Для начала работы с ботом, отправьте ссылку на YouTube или YT Music (не плейлист) и бот'
-    'Загрузит ее вам в формате MP3.
+    'Загрузит ее вам в формате MP3'
     'Загруженное вами музыка, обрабатывается в самом высоком качестве и отправляется вам.'
     'для начала работы с ботом, пожалуйста подпишитесь на канал @ytdlpdeveloper'
     'Приятного использования!'
