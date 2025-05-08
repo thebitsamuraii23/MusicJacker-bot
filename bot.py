@@ -76,8 +76,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     'Привет! Я бот для скачивания музыки с YouTube. Для начала работы с ботом, отправьте ссылку на YouTube или YT Music (не плейлист) и бот'
     'Загрузит ее вам в формате MP3'
     'Загруженное вами музыка, обрабатывается в самом высоком качестве и отправляется вам.'
-    'для начала работы с ботом, пожалуйста подпишитесь на канал @ytdlpdeveloper'
-    'Приятного использования!'
+    'для начала работы с ботом, пожалуйста подпишитесь на канал @ytdlpdeveloper. Приятного использования!'
+ 
         
     )
 async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
