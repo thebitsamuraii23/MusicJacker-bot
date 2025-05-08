@@ -26,6 +26,16 @@ if os.path.exists(cookies_path):
 else:
     logger.error("Файл cookies не найден по указанному пути: %s", cookies_path)
 
+REQUIRED_CHANNEL = "@ytdlpdeveloper"  # Замените на свой канал
+
+async def check_subscription(user_id: int, bot) -> bool:
+    try:
+        member = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
+        return member.status in ("member", "administrator", "creator")
+    except Exception as e:
+        logger.warning(f"Не удалось проверить подписку: {e}")
+        return False
+
 def download_video(url: str) -> tuple[str, str]:
     """
     Скачивает и конвертирует видео в mp3 с фиксированным именем файла output.mp3 в уникальной временной папке.
@@ -77,8 +87,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = update.message.text.strip()
+    user_id = update.effective_user.id
     chat_id = update.message.chat_id
+
+    # Проверка подписки
+    is_subscribed = await check_subscription(user_id, context.bot)
+    if not is_subscribed:
+        await update.message.reply_text(
+            f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова."
+        )
+        return
+
+    url = update.message.text.strip()
     msg = await update.message.reply_text("Проверяю ссылку...")
 
     if ("youtube.com" not in url) and ("youtu.be" not in url):
