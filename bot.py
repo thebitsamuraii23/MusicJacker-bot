@@ -28,7 +28,6 @@ else:
 
 REQUIRED_CHANNEL = "@ytdlpdeveloper"
 
-
 LANGUAGES = {
     "ru": {
         "start": (
@@ -206,9 +205,10 @@ async def check_subscription(user_id: int, bot) -> bool:
         logger.warning(f"Не удалось проверить подписку: {e}")
         return False
 
-def download_video(url: str) -> tuple[str, str]:
+async def async_download_video(url: str) -> tuple[str, str, str]:
     temp_dir = tempfile.mkdtemp()
     output_name = os.path.join(temp_dir, "output.mp3")
+
 
     cmd_title = [
         "yt-dlp",
@@ -217,11 +217,13 @@ def download_video(url: str) -> tuple[str, str]:
         "--skip-download",
         url
     ]
-    info_result = subprocess.run(cmd_title, capture_output=True, text=True)
-    title = info_result.stdout.strip()
-    if not title:
-        title = "Музыка с YouTube"
+    proc_title = await asyncio.create_subprocess_exec(
+        *cmd_title, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    stdout, _ = await proc_title.communicate()
+    title = stdout.decode().strip() or "Музыка с YouTube"
 
+    # Скачать mp3
     cmd_download = [
         "yt-dlp",
         "--cookies", cookies_path,
@@ -233,21 +235,48 @@ def download_video(url: str) -> tuple[str, str]:
         "--output", output_name,
         url
     ]
-    download_result = subprocess.run(cmd_download, capture_output=True, text=True)
-    if download_result.returncode != 0:
+    proc_download = await asyncio.create_subprocess_exec(
+        *cmd_download, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    _, stderr = await proc_download.communicate()
+    if proc_download.returncode != 0:
         shutil.rmtree(temp_dir)
-        raise Exception("Ошибка загрузки: " + download_result.stderr)
+        raise Exception("Ошибка загрузки: " + stderr.decode())
     if not os.path.exists(output_name):
         shutil.rmtree(temp_dir)
         raise Exception("Файл не найден после скачивания.")
-    return output_name, title
+    return output_name, title, temp_dir
+
+async def process_music(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str, texts):
+    chat_id = update.message.chat_id
+    msg = await update.message.reply_text(texts["downloading"])
+    try:
+        audio_file, title, temp_dir = await async_download_video(url)
+
+        file_size = os.path.getsize(audio_file)
+        if file_size > 50 * 1024 * 1024:
+            await msg.edit_text(texts["too_big"])
+            shutil.rmtree(temp_dir)
+            return
+
+        with open(audio_file, 'rb') as audio:
+            await context.bot.send_audio(
+                chat_id=chat_id,
+                audio=audio,
+                title=title,
+                filename="output.mp3"
+            )
+        await msg.edit_text(texts["done"])
+        shutil.rmtree(temp_dir)
+    except Exception as e:
+        logger.error("Ошибка при скачивании: %s", str(e))
+        await msg.edit_text(texts["error"] + str(e))
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await choose_language(update, context)
 
 async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    chat_id = update.message.chat_id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
 
@@ -263,29 +292,8 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(texts["not_youtube"])
         return
 
-    await msg.edit_text(texts["downloading"])
-    try:
-        loop = asyncio.get_event_loop()
-        audio_file, title = await loop.run_in_executor(None, download_video, url)
-
-        file_size = os.path.getsize(audio_file)
-        if file_size > 50 * 1024 * 1024:
-            await msg.edit_text(texts["too_big"])
-            shutil.rmtree(os.path.dirname(audio_file))
-            return
-
-        with open(audio_file, 'rb') as audio:
-            await context.bot.send_audio(
-                chat_id=chat_id,
-                audio=audio,
-                title=title,
-                filename="output.mp3"
-            )
-        await msg.edit_text(texts["done"])
-        shutil.rmtree(os.path.dirname(audio_file))
-    except Exception as e:
-        logger.error("Ошибка при скачивании: %s", str(e))
-        await msg.edit_text(texts["error"] + str(e))
+    
+    asyncio.create_task(process_music(update, context, url, texts))
 
 def main():
     app = Application.builder().token(TOKEN).build()
