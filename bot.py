@@ -223,7 +223,7 @@ async def async_download_video(url: str) -> tuple[str, str, str]:
     stdout, _ = await proc_title.communicate()
     title = stdout.decode().strip() or "Музыка с YouTube"
 
-    # Скачать mp3
+    
     cmd_download = [
         "yt-dlp",
         "--cookies", cookies_path,
