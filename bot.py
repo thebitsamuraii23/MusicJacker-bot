@@ -4,6 +4,7 @@ import asyncio
 import subprocess
 import tempfile
 import shutil
+import json
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from dotenv import load_dotenv
@@ -32,7 +33,7 @@ LANGUAGES = {
     "ru": {
         "start": (
             "Привет! Я бот для скачивания музыки с YouTube.\n\n"
-            "Для начала работы с ботом, отправьте ссылку на YouTube или YT Music (не плейлист), "
+            "Для начала работы с ботом, отправьте ссылку на YouTube или YT Music (видео или плейлист), "
             "и бот загрузит её вам в формате MP3.\n\n"
             "Загруженная вами музыка обрабатывается в самом высоком качестве и отправляется вам.\n\n"
             "Для начала работы с ботом, пожалуйста подпишитесь на канал @ytdlpdeveloper.\n"
@@ -43,14 +44,15 @@ LANGUAGES = {
         "checking": "Проверяю ссылку...",
         "not_youtube": "Это не ссылка на YouTube. Отправьте корректную ссылку.",
         "downloading": "Скачиваю и конвертирую... Подождите.",
-        "too_big": "Файл слишком большой (>50 МБ). Попробуйте другое видео.",
+        "too_big": "Файл слишком большой (>50 МБ). Попробуйте другое видео или плейлист.",
         "done": "Готово! Музыка отправлена.",
-        "error": "Что-то пошло не так. Проверьте ссылку или попробуйте позже!\n"
+        "error": "Что-то пошло не так. Проверьте ссылку или попробуйте позже!\n",
+        "sending_file": "Отправляю файл {index} из {total}..."
     },
     "en": {
         "start": (
             "Hello! I am a bot for downloading music from YouTube.\n\n"
-            "To get started, send a YouTube or YT Music link (not a playlist), "
+            "To get started, send a YouTube or YT Music link (video or playlist), "
             "and the bot will send you an MP3.\n\n"
             "Your music is processed in the highest quality and sent to you.\n\n"
             "To use the bot, please subscribe to the channel @ytdlpdeveloper.\n"
@@ -61,14 +63,15 @@ LANGUAGES = {
         "checking": "Checking link...",
         "not_youtube": "This is not a YouTube link. Please send a valid link.",
         "downloading": "Downloading and converting... Please wait.",
-        "too_big": "File is too large (>50 MB). Try another video.",
+        "too_big": "File is too large (>50 MB). Try another video or playlist.",
         "done": "Done! Music sent.",
-        "error": "Something went wrong. Check the link or try again!\n"
+        "error": "Something went wrong. Check the link or try again!\n",
+        "sending_file": "Sending file {index} of {total}..."
     },
     "az": {
         "start": (
             "Salam! Mən YouTube-dan musiqi yükləmək üçün botam.\n\n"
-            "Başlamaq üçün YouTube və ya YT Music linki göndərin (playlist olmasın), "
+            "Başlamaq üçün YouTube və ya YT Music linki göndərin (video və ya playlist), "
             "və bot sizə MP3 göndərəcək.\n\n"
             "Yüklədiyiniz musiqi ən yüksək keyfiyyətdə işlənir və sizə göndərilir.\n\n"
             "Botdan istifadə etmək üçün zəhmət olmasa @ytdlpdeveloper kanalına abunə olun.\n"
@@ -79,14 +82,15 @@ LANGUAGES = {
         "checking": "Link yoxlanılır...",
         "not_youtube": "Bu YouTube linki deyil. Zəhmət olmasa düzgün link göndərin.",
         "downloading": "Yüklənir və çevrilir... Zəhmət olmasa gözləyin.",
-        "too_big": "Fayl çox böyükdür (>50 MB). Başqa video yoxlayın.",
+        "too_big": "Fayl çox böyükdür (>50 MB). Başqa video və ya playlist yoxlayın.",
         "done": "Hazırdır! Musiqi göndərildi.",
-        "error": "Nəsə səhv oldu. Linki yoxlayın və ya yenidən cəhd edin!\n"
+        "error": "Nəsə səhv oldu. Linki yoxlayın və ya yenidən cəhd edin!\n",
+        "sending_file": "Fayl {index} / {total} göndərilir..."
     },
     "tr": {
         "start": (
             "Merhaba! Ben YouTube'dan müzik indiren bir botum.\n\n"
-            "Başlamak için YouTube veya YT Music bağlantısı gönderin (playlist olmasın), "
+            "Başlamak için YouTube veya YT Music bağlantısı gönderin (video veya playlist), "
             "ve bot size MP3 gönderecek.\n\n"
             "Yüklediğiniz müzik en yüksek kalitede işlenir ve size gönderilir.\n\n"
             "Botu kullanmak için lütfen @ytdlpdeveloper kanalına abone olun.\n"
@@ -97,14 +101,15 @@ LANGUAGES = {
         "checking": "Bağlantı kontrol ediliyor...",
         "not_youtube": "Bu bir YouTube bağlantısı değil. Lütfen geçerli bir bağlantı gönderin.",
         "downloading": "İndiriliyor ve dönüştürülüyor... Lütfen bekleyin.",
-        "too_big": "Dosya çok büyük (>50 MB). Başka bir video deneyin.",
+        "too_big": "Dosya çok büyük (>50 MB). Başka bir video veya playlist deneyin.",
         "done": "Hazır! Müzik gönderildi.",
-        "error": "Bir şeyler ters gitti. Bağlantıyı kontrol edin veya tekrar deneyin!\n"
+        "error": "Bir şeyler ters gitti. Bağlantıyı kontrol edin veya tekrar deneyin!\n",
+        "sending_file": "{index} / {total} dosya gönderiliyor..."
     },
     "es": {
         "start": (
             "¡Hola! Soy un bot para descargar música de YouTube.\n\n"
-            "Para empezar, envía un enlace de YouTube o YT Music (no una lista de reproducción), "
+            "Para empezar, envía un enlace de YouTube o YT Music (video o lista de reproducción), "
             "y el bot te enviará un MP3.\n\n"
             "La música que subes se procesa con la mejor calidad y se te envía.\n\n"
             "Para usar el bot, por favor suscríbete al canal @ytdlpdeveloper.\n"
@@ -115,14 +120,15 @@ LANGUAGES = {
         "checking": "Comprobando enlace...",
         "not_youtube": "Esto no es un enlace de YouTube. Por favor, envía un enlace válido.",
         "downloading": "Descargando y convirtiendo... Por favor espera.",
-        "too_big": "El archivo es demasiado grande (>50 MB). Prueba con otro video.",
+        "too_big": "El archivo es demasiado grande (>50 MB). Prueba con otro video o lista de reproducción.",
         "done": "¡Listo! Música enviada.",
-        "error": "Algo salió mal. ¡Verifica el enlace o inténtalo de nuevo!\n"
+        "error": "Algo salió mal. ¡Verifica el enlace o inténtalo de nuevo!\n",
+        "sending_file": "Enviando archivo {index} de {total}..."
     },
     "uk": {
         "start": (
             "Привіт! Я бот для завантаження музики з YouTube.\n\n"
-            "Щоб почати, надішліть посилання на YouTube або YT Music (не плейлист), "
+            "Щоб почати, надішліть посилання на YouTube або YT Music (відео чи плейлист), "
             "і бот надішле вам MP3.\n\n"
             "Завантажена вами музика обробляється у найвищій якості та надсилається вам.\n\n"
             "Щоб користуватися ботом, будь ласка, підпишіться на канал @ytdlpdeveloper.\n"
@@ -133,14 +139,15 @@ LANGUAGES = {
         "checking": "Перевіряю посилання...",
         "not_youtube": "Це не посилання на YouTube. Надішліть коректне посилання.",
         "downloading": "Завантажую та конвертую... Зачекайте.",
-        "too_big": "Файл занадто великий (>50 МБ). Спробуйте інше відео.",
+        "too_big": "Файл занадто великий (>50 МБ). Спробуйте інше відео або плейлист.",
         "done": "Готово! Музику надіслано.",
-        "error": "Щось пішло не так. Перевірте посилання або спробуйте ще раз!\n"
+        "error": "Щось пішло не так. Перевірте посилання або спробуйте ще раз!\n",
+        "sending_file": "Надсилаю файл {index} з {total}..."
     },
     "ar": {
         "start": (
             "مرحبًا! أنا بوت لتحميل الموسيقى من يوتيوب.\n\n"
-            "لبدء الاستخدام، أرسل رابط YouTube أو YT Music (ليس قائمة تشغيل)، "
+            "لبدء الاستخدام، أرسل رابط YouTube أو YT Music (فيديو أو قائمة تشغيل)، "
             "وسيرسل لك البوت ملف MP3.\n\n"
             "يتم معالجة الموسيقى التي ترسلها بأعلى جودة وإرسالها إليك.\n\n"
             "لاستخدام البوت، يرجى الاشتراك في قناة @ytdlpdeveloper.\n"
@@ -151,9 +158,10 @@ LANGUAGES = {
         "checking": "جارٍ التحقق من الرابط...",
         "not_youtube": "هذا ليس رابط يوتيوب. يرجى إرسال رابط صحيح.",
         "downloading": "جارٍ التحميل والتحويل... يرجى الانتظار.",
-        "too_big": "الملف كبير جدًا (>50 ميجابايت). جرب فيديو آخر.",
+        "too_big": "الملف كبير جدًا (>50 ميجابايت). جرب فيديو أو قائمة تشغيل أخرى.",
         "done": "تم! تم إرسال الموسيقى.",
-        "error": "حدث خطأ ما. تحقق من الرابط أو حاول مرة أخرى!\n"
+        "error": "حدث خطأ ما. تحقق من الرابط أو حاول مرة أخرى!\n",
+        "sending_file": "جاري إرسال الملف {index} من {total}..."
     }
 }
 
@@ -205,26 +213,34 @@ async def check_subscription(user_id: int, bot) -> bool:
         logger.warning(f"Не удалось проверить подписку: {e}")
         return False
 
-async def async_download_video(url: str) -> tuple[str, str, str]:
-    temp_dir = tempfile.mkdtemp()
-    output_name = os.path.join(temp_dir, "output.mp3")
-
-
-    cmd_title = [
+async def get_url_info(url: str) -> dict:
+    cmd = [
         "yt-dlp",
         "--cookies", cookies_path,
-        "--print", "%(title)s",
-        "--skip-download",
+        "--flat-playlist",
+        "--dump-single-json",
         url
     ]
-    proc_title = await asyncio.create_subprocess_exec(
-        *cmd_title, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-    )
-    stdout, _ = await proc_title.communicate()
-    title = stdout.decode().strip() or "Музыка с YouTube"
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            logger.error(f"yt-dlp info error: {stderr.decode()}")
+            raise Exception("Failed to get URL info")
+        return json.loads(stdout.decode())
+    except Exception as e:
+        logger.error(f"Error getting URL info: {e}")
+        raise
 
-    
-    cmd_download = [
+async def async_download_audio(url: str, temp_dir: str, is_playlist: bool) -> list[tuple[str, str]]:
+    downloaded_files_info = []
+    output_template = os.path.join(temp_dir, "%(title)s.%(ext)s")
+    if is_playlist:
+        output_template = os.path.join(temp_dir, "%(playlist_index)s - %(title)s.%(ext)s")
+
+    cmd = [
         "yt-dlp",
         "--cookies", cookies_path,
         "--ffmpeg-location", "/usr/bin/ffmpeg",
@@ -232,45 +248,95 @@ async def async_download_video(url: str) -> tuple[str, str, str]:
         "--extract-audio",
         "--audio-format", "mp3",
         "--audio-quality", "192K",
-        "--output", output_name,
+        "--output", output_template,
         url
     ]
-    proc_download = await asyncio.create_subprocess_exec(
-        *cmd_download, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-    )
-    _, stderr = await proc_download.communicate()
-    if proc_download.returncode != 0:
-        shutil.rmtree(temp_dir)
-        raise Exception("Ошибка загрузки: " + stderr.decode())
-    if not os.path.exists(output_name):
-        shutil.rmtree(temp_dir)
-        raise Exception("Файл не найден после скачивания.")
-    return output_name, title, temp_dir
 
-async def process_music(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str, texts):
-    chat_id = update.message.chat_id
-    msg = await update.message.reply_text(texts["downloading"])
     try:
-        audio_file, title, temp_dir = await async_download_video(url)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        _, stderr = await proc.communicate()
 
-        file_size = os.path.getsize(audio_file)
-        if file_size > 50 * 1024 * 1024:
-            await msg.edit_text(texts["too_big"])
-            shutil.rmtree(temp_dir)
-            return
+        if proc.returncode != 0:
+            raise Exception("Ошибка загрузки: " + stderr.decode())
 
-        with open(audio_file, 'rb') as audio:
-            await context.bot.send_audio(
-                chat_id=chat_id,
-                audio=audio,
-                title=title,
-                filename="output.mp3"
-            )
-        await msg.edit_text(texts["done"])
-        shutil.rmtree(temp_dir)
+        if is_playlist:
+            for root, _, files in os.walk(temp_dir):
+                for file in files:
+                    if file.endswith(".mp3"):
+                        filepath = os.path.join(root, file)
+                        title = os.path.splitext(file)[0]
+                        downloaded_files_info.append((filepath, title))
+            downloaded_files_info.sort()
+        else:
+            downloaded_files = [f for f in os.listdir(temp_dir) if f.endswith(".mp3")]
+            if len(downloaded_files) != 1:
+                raise Exception("Неожиданное количество файлов после скачивания одиночного видео.")
+            filepath = os.path.join(temp_dir, downloaded_files[0])
+            title = os.path.splitext(downloaded_files[0])[0]
+            downloaded_files_info.append((filepath, title))
+
+        if not downloaded_files_info:
+            raise Exception("Не найдены скачанные MP3 файлы.")
+
+        return downloaded_files_info
+
     except Exception as e:
-        logger.error("Ошибка при скачивании: %s", str(e))
-        await msg.edit_text(texts["error"] + str(e))
+        logger.error(f"Error during download process: {e}")
+        raise e
+
+
+async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str, texts: dict):
+    chat_id = update.message.chat_id
+    temp_dir = None
+    msg = None
+
+    try:
+        msg = await update.message.reply_text(texts["downloading"])
+        temp_dir = tempfile.mkdtemp()
+
+        url_info = await get_url_info(url)
+        is_playlist = url_info.get('_type') == 'playlist'
+
+        downloaded_files_info = await async_download_audio(url, temp_dir, is_playlist)
+
+        total_files = len(downloaded_files_info)
+        for i, (audio_file, title) in enumerate(downloaded_files_info):
+            if msg:
+                await msg.edit_text(texts["sending_file"].format(index=i+1, total=total_files))
+
+            file_size = os.path.getsize(audio_file)
+            if file_size > 50 * 1024 * 1024:
+                await update.message.reply_text(f"{texts['too_big']} ({os.path.basename(audio_file)})")
+                continue
+
+            try:
+                with open(audio_file, 'rb') as audio:
+                    await context.bot.send_audio(
+                        chat_id=chat_id,
+                        audio=audio,
+                        title=title,
+                        filename=os.path.basename(audio_file)
+                    )
+            except Exception as send_error:
+                 logger.error(f"Error sending audio file {audio_file}: {send_error}")
+                 await update.message.reply_text(f"{texts['error']} (Ошибка отправки файла {os.path.basename(audio_file)})")
+
+
+        if msg:
+             await msg.edit_text(texts["done"])
+
+    except Exception as e:
+        logger.error("Ошибка при скачивании или обработке: %s", str(e))
+        if msg:
+            await msg.edit_text(texts["error"] + str(e))
+        else:
+            await update.message.reply_text(texts["error"] + str(e))
+    finally:
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await choose_language(update, context)
@@ -286,14 +352,13 @@ async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     url = update.message.text.strip()
-    msg = await update.message.reply_text(texts["checking"])
 
-    if ("youtube.com" not in url) and ("youtu.be" not in url):
-        await msg.edit_text(texts["not_youtube"])
-        return
+    if not ("youtube.com/" in url or "youtu.be/" in url or "music.youtube.com/" in url):
+         await update.message.reply_text(texts["not_youtube"])
+         return
 
-    
-    asyncio.create_task(process_music(update, context, url, texts))
+    asyncio.create_task(handle_download(update, context, url, texts))
+
 
 def main():
     app = Application.builder().token(TOKEN).build()
