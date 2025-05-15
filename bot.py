@@ -39,23 +39,23 @@ else:
     else:
         logger.warning(f"FFmpeg НЕ найден или недоступен по пути по умолчанию: {ffmpeg_path}.")
     logger.warning("Бот попытается использовать ffmpeg из системного PATH, если он там есть. "
-                   "Для полного функционала (лучшее качество видео, MP3/WAV конвертация с водяным знаком) "
+                   "Для полного функционала (MP3/WAV конвертация с водяным знаком) "
                    "рекомендуется установить FFmpeg и указать к нему путь через переменную окружения FFMPEG_PATH "
                    "или убедиться, что он в системном PATH и имеет права на выполнение.")
 
 
 REQUIRED_CHANNEL = os.getenv("REQUIRED_CHANNEL", "@ytdlpdeveloper")
 
-
-TELEGRAM_FILE_SIZE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024
-TELEGRAM_FILE_SIZE_LIMIT_TEXT = "1 ГБ"
+# Лимит размера файла для отправки через Telegram (50 МБ)
+TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024
+TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ"
 
 LANGUAGES = {
     "ru": {
         "start": (
-            "Привет! Я бот для скачивания аудио и видео с YouTube.\n\n"
+            "Привет! Я бот для скачивания аудио с YouTube.\n\n"
             "Отправьте ссылку на YouTube или YT Music (видео или плейлист), "
-            "и я предложу вам варианты загрузки.\n\n"
+            "и я предложу вам варианты загрузки аудио.\n\n"
             f"Для работы с ботом, пожалуйста, подпишитесь на канал {REQUIRED_CHANNEL}.\n"
             "Приятного использования!"
         ),
@@ -63,16 +63,13 @@ LANGUAGES = {
         "not_subscribed": f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова.",
         "checking": "Проверяю ссылку...",
         "not_youtube": "Это не ссылка на YouTube. Отправьте корректную ссылку.",
-        "choose_download_type": "Выберите, что вы хотите скачать:",
+        "choose_download_type": "Выберите формат аудио:",
         "audio_button_mp3": "🎧 Аудио (MP3)",
         "audio_button_wav": "🎧 Аудио (WAV)",
-        "video_button": "🎬 Видео (MP4)",
         "downloading_audio": "Скачиваю аудио... Подождите.",
-        "downloading_video": "Скачиваю видео... Подождите.",
         "download_progress": "Скачиваю: {percent} на скорости {speed}, осталось ~{eta}",
         "too_big": f"Файл слишком большой (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Попробуйте другое видео или плейлист.",
         "done_audio": "Готово! Аудио отправлено.",
-        "done_video": "Готово! Видео отправлено.",
         "error": "Что-то пошло не так. Проверьте ссылку или попробуйте позже!\n",
         "error_private_video": "Это приватное видео и не может быть скачано.",
         "error_video_unavailable": "Видео недоступно.",
@@ -86,9 +83,9 @@ LANGUAGES = {
     },
     "en": {
         "start": (
-            "Hello! I am a bot for downloading audio and video from YouTube.\n\n"
+            "Hello! I am a bot for downloading audio from YouTube.\n\n"
             "Send a YouTube or YT Music link (video or playlist), "
-            "and I will offer you download options.\n\n"
+            "and I will offer you audio download options.\n\n"
             f"To use the bot, please subscribe to the channel {REQUIRED_CHANNEL}.\n"
             "Enjoy!"
         ),
@@ -96,16 +93,13 @@ LANGUAGES = {
         "not_subscribed": f"To use the bot, please subscribe to {REQUIRED_CHANNEL} and try again.",
         "checking": "Checking link...",
         "not_youtube": "This is not a YouTube link. Please send a valid link.",
-        "choose_download_type": "Choose what you want to download:",
+        "choose_download_type": "Choose audio format:",
         "audio_button_mp3": "🎧 Audio (MP3)",
         "audio_button_wav": "🎧 Audio (WAV)",
-        "video_button": "🎬 Video (MP4)",
         "downloading_audio": "Downloading audio... Please wait.",
-        "downloading_video": "Downloading video... Please wait.",
         "download_progress": "Downloading: {percent} at {speed}, ETA ~{eta}",
         "too_big": f"File is too large (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Try another video or playlist.",
         "done_audio": "Done! Audio sent.",
-        "done_video": "Done! Video sent.",
         "error": "Something went wrong. Check the link or try again!\n",
         "error_private_video": "This is a private video and cannot be downloaded.",
         "error_video_unavailable": "Video unavailable.",
@@ -119,9 +113,9 @@ LANGUAGES = {
     },
     "az": {
         "start": (
-            "Salam! Mən YouTube-dan audio və video yükləmək üçün botam.\n\n"
+            "Salam! Mən YouTube-dan audio yükləmək üçün botam.\n\n"
             "YouTube və ya YT Music linki göndərin (video və ya playlist), "
-            "və mən sizə yükləmə seçimlərini təqdim edəcəyəm.\n\n"
+            "və mən sizə audio yükləmə seçimlərini təqdim edəcəyəm.\n\n"
             f"Botdan istifadə etmək üçün zəhmət olmasa {REQUIRED_CHANNEL} kanalına abunə olun.\n"
             "Uğurlar!"
         ),
@@ -129,16 +123,13 @@ LANGUAGES = {
         "not_subscribed": f"Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun və yenidən cəhd edin.",
         "checking": "Link yoxlanılır...",
         "not_youtube": "Bu YouTube linki deyil. Zəhmət olmasa düzgün link göndərin.",
-        "choose_download_type": "Nə yükləmək istədiyinizi seçin:",
+        "choose_download_type": "Audio formatını seçin:",
         "audio_button_mp3": "🎧 Səs (MP3)",
         "audio_button_wav": "🎧 Səs (WAV)",
-        "video_button": "🎬 Video (MP4)",
         "downloading_audio": "Səs yüklənir... Zəhmət olmasa gözləyin.",
-        "downloading_video": "Video yüklənir... Zəhmət olmasa gözləyin.",
         "download_progress": "Yüklənir: {percent}, sürət {speed}, qalan vaxt ~{eta}",
         "too_big": f"Fayl çox böyükdür (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Başqa video və ya playlist yoxlayın.",
         "done_audio": "Hazırdır! Səs göndərildi.",
-        "done_video": "Hazırdır! Video göndərildi.",
         "error": "Nəsə səhv oldu. Linki yoxlayın və ya yenidən cəhd edin!\n",
         "error_private_video": "Bu şəxsi videodur və yüklənə bilməz.",
         "error_video_unavailable": "Video mövcud deyil.",
@@ -152,9 +143,9 @@ LANGUAGES = {
     },
     "tr": {
         "start": (
-            "Merhaba! Ben YouTube'dan ses ve video indiren bir botum.\n\n"
+            "Merhaba! Ben YouTube'dan ses indiren bir botum.\n\n"
             "Bir YouTube veya YT Music bağlantısı gönderin (video veya çalma listesi), "
-            "ve size indirme seçenekleri sunacağım.\n\n"
+            "ve size ses indirme seçenekleri sunacağım.\n\n"
             f"Botu kullanmak için lütfen {REQUIRED_CHANNEL} kanalına abone olun.\n"
             "İyi eğlenceler!"
         ),
@@ -162,16 +153,13 @@ LANGUAGES = {
         "not_subscribed": f"Botu kullanmak için {REQUIRED_CHANNEL} kanalına abone olun ve tekrar deneyin.",
         "checking": "Bağlantı kontrol ediliyor...",
         "not_youtube": "Bu bir YouTube bağlantısı değil. Lütfen geçerli bir bağlantı gönderin.",
-        "choose_download_type": "Ne indirmek istediğinizi seçin:",
+        "choose_download_type": "Ses formatını seçin:",
         "audio_button_mp3": "🎧 Ses (MP3)",
         "audio_button_wav": "🎧 Ses (WAV)",
-        "video_button": "🎬 Video (MP4)",
         "downloading_audio": "Ses indiriliyor... Lütfen bekleyin.",
-        "downloading_video": "Video indiriliyor... Lütfen bekleyin.",
         "download_progress": "İndiriliyor: {percent}, hız {speed}, ETA ~{eta}",
         "too_big": f"Dosya çok büyük (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Başka bir video veya çalma listesi deneyin.",
         "done_audio": "Hazır! Ses gönderildi.",
-        "done_video": "Hazır! Video gönderildi.",
         "error": "Bir şeyler ters gitti. Bağlantıyı kontrol edin veya tekrar deneyin!\n",
         "error_private_video": "Bu özel bir video ve indirilemez.",
         "error_video_unavailable": "Video kullanılamıyor.",
@@ -185,9 +173,9 @@ LANGUAGES = {
     },
     "es": {
         "start": (
-            "¡Hola! Soy un bot para descargar audio y video de YouTube.\n\n"
+            "¡Hola! Soy un bot para descargar audio de YouTube.\n\n"
             "Envía un enlace de YouTube o YT Music (video o lista de reproducción), "
-            "y te ofreceré opciones de descarga.\n\n"
+            "y te ofreceré opciones de descarga de audio.\n\n"
             f"Para usar el bot, por favor suscríbete al canal {REQUIRED_CHANNEL}.\n"
             "¡Disfruta!"
         ),
@@ -195,16 +183,13 @@ LANGUAGES = {
         "not_subscribed": f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL} y vuelve a intentarlo.",
         "checking": "Comprobando enlace...",
         "not_youtube": "Esto no es un enlace de YouTube. Por favor, envía un enlace válido.",
-        "choose_download_type": "¿Qué quieres descargar?:",
+        "choose_download_type": "Elige el formato de audio:",
         "audio_button_mp3": "🎧 Audio (MP3)",
         "audio_button_wav": "🎧 Audio (WAV)",
-        "video_button": "🎬 Video (MP4)",
         "downloading_audio": "Descargando audio... Por favor espera.",
-        "downloading_video": "Descargando video... Por favor espera.",
         "download_progress": "Descargando: {percent} a {speed}, ETA ~{eta}",
         "too_big": f"El archivo es demasiado grande (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Prueba con otro video o lista de reproducción.",
         "done_audio": "¡Listo! Audio enviado.",
-        "done_video": "¡Listo! Video enviado.",
         "error": "Algo salió mal. ¡Verifica el enlace o inténtalo de nuevo!\n",
         "error_private_video": "Este es un video privado y no se puede descargar.",
         "error_video_unavailable": "Video no disponible.",
@@ -218,9 +203,9 @@ LANGUAGES = {
     },
     "uk": {
         "start": (
-            "Привіт! Я бот для завантаження аудіо та відео з YouTube.\n\n"
+            "Привіт! Я бот для завантаження аудіо з YouTube.\n\n"
             "Надішліть посилання на YouTube або YT Music (відео чи плейлист), "
-            "і я запропоную вам варіанти завантаження.\n\n"
+            "і я запропоную вам варіанти завантаження аудіо.\n\n"
             f"Щоб користуватися ботом, будь ласка, підпишіться на канал {REQUIRED_CHANNEL}.\n"
             "Гарного користування!"
         ),
@@ -228,16 +213,13 @@ LANGUAGES = {
         "not_subscribed": f"Щоб користуватися ботом, підпишіться на канал {REQUIRED_CHANNEL} і спробуйте ще раз.",
         "checking": "Перевіряю посилання...",
         "not_youtube": "Це не посилання на YouTube. Надішліть коректне посилання.",
-        "choose_download_type": "Оберіть, що ви бажаєте завантажити:",
+        "choose_download_type": "Оберіть формат аудіо:",
         "audio_button_mp3": "🎧 Аудіо (MP3)",
         "audio_button_wav": "🎧 Аудіо (WAV)",
-        "video_button": "🎬 Відео (MP4)",
         "downloading_audio": "Завантажую аудіо... Зачекайте.",
-        "downloading_video": "Завантажую відео... Зачекайте.",
         "download_progress": "Завантаження: {percent} зі швидкістю {speed}, залишилось ~{eta}",
         "too_big": f"Файл занадто великий (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Спробуйте інше відео або плейлист.",
         "done_audio": "Готово! Аудіо надіслано.",
-        "done_video": "Готово! Відео надіслано.",
         "error": "Щось пішло не так. Перевірте посилання або спробуйте ще раз!\n",
         "error_private_video": "Це приватне відео і не може бути завантажене.",
         "error_video_unavailable": "Відео недоступне.",
@@ -251,9 +233,9 @@ LANGUAGES = {
     },
     "ar": {
         "start": (
-            "مرحبًا! أنا بوت لتحميل الصوت والفيديو من يوتيوب.\n\n"
+            "مرحبًا! أنا بوت لتحميل الصوت من يوتيوب.\n\n"
             "أرسل رابط YouTube أو YT Music (فيديو أو قائمة تشغيل)، "
-            "وسأقدم لك خيارات التنزيل.\n\n"
+            "وسأقدم لك خيارات تحميل الصوت.\n\n"
             f"لاستخدام البوت، يرجى الاشتراك في قناة {REQUIRED_CHANNEL}.\n"
             "استخدام ممتع!"
         ),
@@ -261,16 +243,13 @@ LANGUAGES = {
         "not_subscribed": f"لاستخدام البوت، يرجى الاشتراك في قناة {REQUIRED_CHANNEL} ثم المحاولة مرة أخرى.",
         "checking": "جارٍ التحقق من الرابط...",
         "not_youtube": "هذا ليس رابط يوتيوب. يرجى إرسال رابط صحيح.",
-        "choose_download_type": "اختر ما تريد تنزيله:",
+        "choose_download_type": "اختر صيغة الصوت:",
         "audio_button_mp3": "🎧 صوت (MP3)",
         "audio_button_wav": "🎧 صوت (WAV)",
-        "video_button": "🎬 فيديو (MP4)",
         "downloading_audio": "جارٍ تحميل الصوت... يرجى الانتظار.",
-        "downloading_video": "جارٍ تحميل الفيديو... يرجى الانتظار.",
         "download_progress": "جار التحميل: {percent} بسرعة {speed}، الوقت المتبقي ~{eta}",
         "too_big": f"الملف كبير جدًا (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). جرب فيديو أو قائمة تشغيل أخرى.",
         "done_audio": "تم! تم إرسال الصوت.",
-        "done_video": "تم! تم إرسال الفيديو.",
         "error": "حدث خطأ ما. تحقق من الرابط أو حاول مرة أخرى!\n",
         "error_private_video": "هذا الفيديو خاص ولا يمكن تحميله.",
         "error_video_unavailable": "الفيديو غير متوفر.",
@@ -441,7 +420,7 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
             logger.error(f"yt-dlp hook: Ошибка во время загрузки для user {user_id}.")
 
     try:
-        initial_download_message = texts["downloading_audio"] if download_type in ["audio_mp3", "audio_wav"] else texts["downloading_video"]
+        initial_download_message = texts["downloading_audio"] # Теперь всегда аудио
         status_message = await context.bot.send_message(chat_id=chat_id, text=initial_download_message, reply_markup=cancel_keyboard)
 
         temp_dir = tempfile.mkdtemp()
@@ -451,10 +430,7 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
         is_playlist = url_info.get('_type') == 'playlist'
         
         watermark_text_for_filename = "Made by @ytdlpload_bot"
-        if download_type in ["audio_mp3", "audio_wav"]:
-            base_output_template = f"%(title).140B - {watermark_text_for_filename} [%(id)s].%(ext)s"
-        else: # For video
-            base_output_template = "%(title).180B [%(id)s].%(ext)s"
+        base_output_template = f"%(title).140B - {watermark_text_for_filename} [%(id)s].%(ext)s" # Для аудио
 
         if is_playlist:
             output_template = os.path.join(temp_dir, "%(playlist_index)02d - " + base_output_template)
@@ -477,7 +453,7 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
         if download_type == "audio_mp3":
             if FFMPEG_IS_AVAILABLE:
                 logger.info(f"FFmpeg доступен для user {user_id}. Аудио будет конвертировано в MP3 с водяным знаком в метаданных.")
-                metadata_watermark_text = "Made by @ytdlpload_bot"
+                metadata_watermark_text = "Made by @ytdlpload_bot" # Этот водяной знак для метаданных
                 ydl_opts['format'] = 'bestaudio/best'
                 ydl_opts['postprocessors'] = [{
                     'key': 'FFmpegExtractAudio',
@@ -491,14 +467,14 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
                 primary_expected_extension = ".mp3"
             else:
                 logger.warning(f"FFmpeg не найден для user {user_id}. Аудио (MP3) будет скачано в лучшем доступном формате, без водяного знака в метаданных.")
-                ydl_opts['format'] = 'bestaudio/best' # Скачиваем лучшее аудио как есть
+                ydl_opts['format'] = 'bestaudio/best'
                 primary_expected_extension = ".m4a (или другой аудио формат)"
             done_message = texts["done_audio"]
         
         elif download_type == "audio_wav":
             if FFMPEG_IS_AVAILABLE:
                 logger.info(f"FFmpeg доступен для user {user_id}. Аудио будет конвертировано в WAV с водяным знаком в метаданных.")
-                metadata_watermark_text = "Made by @ytdlpload_bot"
+                metadata_watermark_text = "Made by @ytdlpload_bot" # Этот водяной знак для метаданных
                 ydl_opts['format'] = 'bestaudio/best'
                 ydl_opts['postprocessors'] = [{
                     'key': 'FFmpegExtractAudio',
@@ -514,22 +490,8 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
                 ydl_opts['format'] = 'bestaudio/best'
                 primary_expected_extension = ".m4a (или другой аудио формат)"
             done_message = texts["done_audio"]
-
-        elif download_type == "video":
-            if FFMPEG_IS_AVAILABLE:
-                logger.info(f"FFmpeg доступен для user {user_id}. Видео будет скачано с возможностью объединения для лучшего качества.")
-                ydl_opts.update({
-                    'format': 'bestvideo[ext=mp4][height<=?1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=?1080]/bestvideo+bestaudio/best',
-                    'merge_output_format': 'mp4',
-                })
-            else:
-                logger.warning(f"FFmpeg не найден для user {user_id}. Видео будет скачано как единый файл (качество/формат могут отличаться).")
-                ydl_opts.update({
-                    'format': 'best[ext=mp4][height<=?1080][progressive=True]/best[ext=mp4][height<=?1080]/best[progressive=True][height<=?1080]/best[height<=?1080]/best',
-                })
-            primary_expected_extension = ".mp4"
-            done_message = texts["done_video"]
-        else:
+        else: # Если вдруг пришел неизвестный тип, хотя мы его убрали из кнопок
+            logger.error(f"Получен неизвестный download_type: {download_type} для user {user_id}")
             raise ValueError(f"Неизвестный тип загрузки: {download_type}")
 
         ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
@@ -554,7 +516,6 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
                 all_temp_files.sort()
         
         found_primary = False
-        # Логика поиска файлов
         if FFMPEG_IS_AVAILABLE and (download_type == "audio_mp3" or download_type == "audio_wav"):
             expected_ext_for_ffmpeg_audio = ".mp3" if download_type == "audio_mp3" else ".wav"
             for file_name in all_temp_files:
@@ -566,19 +527,9 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
                     downloaded_files_info.append((file_path, base_title))
                     found_primary = True
                     logger.info(f"Найден основной аудио файл {expected_ext_for_ffmpeg_audio}: '{file_name}' для user {user_id}")
-        elif download_type == "video":
-             for file_name in all_temp_files:
-                file_path = os.path.join(temp_dir, file_name)
-                if os.path.splitext(file_name)[1].lower() == ".mp4":
-                    base_title = file_name
-                    if is_playlist and " - " in base_title: base_title = base_title.split(" - ", 1)[1]
-                    base_title = os.path.splitext(base_title.split(" [")[0])[0]
-                    downloaded_files_info.append((file_path, base_title))
-                    found_primary = True
-                    logger.info(f"Найден основной видео файл .mp4: '{file_name}' для user {user_id}")
-
-        if not found_primary:
-            logger.info(f"Основной формат ('{primary_expected_extension}') не найден или не ожидался для user {user_id}, ищем альтернативные.")
+        
+        if not found_primary: # Если основной формат не найден или ffmpeg не был доступен
+            logger.info(f"Основной формат ('{primary_expected_extension}') не найден или не ожидался для user {user_id}, ищем альтернативные аудио форматы.")
             for file_name in all_temp_files:
                 file_path = os.path.join(temp_dir, file_name)
                 file_ext_lower = os.path.splitext(file_name)[1].lower()
@@ -589,14 +540,10 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
                     base_title = base_title.split(" - ", 1)[1]
                 base_title = os.path.splitext(base_title.split(" [")[0])[0]
 
-                if download_type in ["audio_mp3", "audio_wav"] and file_ext_lower in [".m4a", ".webm", ".ogg", ".opus", ".aac", ".mp3", ".wav"]:
+                if file_ext_lower in [".m4a", ".webm", ".ogg", ".opus", ".aac", ".mp3", ".wav"]: # Ищем любые аудио
                     logger.info(f"Найден альтернативный аудио файл: '{file_name}' для user {user_id}")
                     if not any(f[0] == file_path for f in downloaded_files_info):
                          downloaded_files_info.append((file_path, base_title))
-                elif download_type == "video" and file_ext_lower in [".mkv", ".webm", ".mp4"]:
-                    logger.info(f"Найден альтернативный видео файл: '{file_name}' для user {user_id}")
-                    if not any(f[0] == file_path for f in downloaded_files_info):
-                        downloaded_files_info.append((file_path, base_title))
 
         if not downloaded_files_info:
             error_detail = f"Ожидалось что-то вроде: {primary_expected_extension}. Найдено во временной папке: {all_temp_files if all_temp_files else 'пусто'}."
@@ -613,16 +560,10 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
                 continue
             try:
                 with open(file_to_send, 'rb') as f_send:
-                    if download_type in ["audio_mp3", "audio_wav"]:
-                        await context.bot.send_audio(
-                            chat_id=chat_id, audio=f_send, title=title_str,
-                            filename=os.path.basename(file_to_send)
-                        )
-                    elif download_type == "video":
-                        await context.bot.send_video(
-                            chat_id=chat_id, video=f_send, caption=title_str,
-                            filename=os.path.basename(file_to_send)
-                        )
+                    await context.bot.send_audio( # Теперь всегда отправляем как аудио
+                        chat_id=chat_id, audio=f_send, title=title_str,
+                        filename=os.path.basename(file_to_send)
+                    )
             except Exception as send_error:
                 logger.error(f"Ошибка отправки файла {file_to_send} для user {user_id}: {send_error}")
                 if "Request Entity Too Large" in str(send_error):
@@ -630,7 +571,7 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
                 else:
                     await context.bot.send_message(chat_id=chat_id, text=f"{texts['error']} (Ошибка отправки файла {os.path.basename(file_to_send)})")
         
-        await update_status_message_async(done_message, show_cancel_button=False)
+        await update_status_message_async(texts["done_audio"], show_cancel_button=False) # Теперь всегда done_audio
 
     except asyncio.CancelledError:
         logger.info(f"Задача загрузки для user {user_id} (URL: {url}, Тип: {download_type}) была отменена.")
@@ -680,10 +621,8 @@ async def ask_download_type(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         [
             InlineKeyboardButton(texts["audio_button_mp3"], callback_data=f"dltype_audio_mp3_{user_id}"),
             InlineKeyboardButton(texts["audio_button_wav"], callback_data=f"dltype_audio_wav_{user_id}")
-        ],
-        [
-            InlineKeyboardButton(texts["video_button"], callback_data=f"dltype_video_{user_id}")
         ]
+        
     ])
     await update.message.reply_text(texts["choose_download_type"], reply_markup=keyboard)
 
@@ -704,13 +643,12 @@ async def process_link_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
     url = update.message.text.strip()
     url_lower = url.lower()
-    if not ("youtube.com/" in url_lower or "youtu.be/" in url_lower or \
-            "music.youtube.com/" in url_lower or "youtube.com/" in url or \
-            "youtu.be/" in url): 
+   
+    if not ("youtube.com/" in url_lower or "youtu.be/" in url_lower):
         await update.message.reply_text(texts["not_youtube"])
         return
     
-    logger.info(f"User {user_id} отправил URL: {url}. Предлагаем выбор типа загрузки.")
+    logger.info(f"User {user_id} отправил URL: {url}. Предлагаем выбор типа загрузки аудио.")
     await ask_download_type(update, context, url)
 
 async def select_download_type_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -718,20 +656,14 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
     await query.answer()
 
     try:
-       
         parts = query.data.split("_")
-    
-        download_format_type = parts[1]
+     
+        if len(parts) != 4 or parts[0] != "dltype" or parts[1] != "audio":
+            raise ValueError("Некорректный формат callback_data для аудио")
         
-        if download_format_type == "audio":
-            specific_format = parts[2] 
-            user_id_from_callback = int(parts[3])
-            download_type_for_handler = f"audio_{specific_format}"
-        elif download_format_type == "video":
-            user_id_from_callback = int(parts[2])
-            download_type_for_handler = "video"
-        else:
-            raise ValueError("Неизвестный тип действия в callback_data")
+        specific_format = parts[2]
+        user_id_from_callback = int(parts[3])
+        download_type_for_handler = f"audio_{specific_format}"
 
     except (IndexError, ValueError) as e:
         logger.error(f"Ошибка разбора callback_data для типа загрузки: {query.data}, {e}")
