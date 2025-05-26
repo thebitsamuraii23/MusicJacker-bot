@@ -32,7 +32,7 @@ LANGUAGES = {
             "Привет! Я бот для скачивания аудио с YouTube и SoundCloud.\n\n"
             "Отправьте ссылку на YouTube или SoundCloud (видео или трек), и я предложу вам варианты загрузки аудио.\n\n"
             f"Для работы с ботом, подпишитесь на канал {REQUIRED_CHANNEL}.\n"
-            "\n\ud83c\udfb5 Также я умею искать музыку по названию! Просто напишите /search и найдите нужный трек.\n"
+            "\n🎵 Также я умею искать музыку по названию! Просто напишите /search и найдите нужный трек.\n"
             "Приятного использования!"
         ),
         "choose_lang": "Выберите язык / Choose language:",
@@ -40,8 +40,8 @@ LANGUAGES = {
         "checking": "Проверяю ссылку...",
         "not_youtube": "Это не поддерживаемая ссылка. Отправьте корректную ссылку на YouTube или SoundCloud.",
         "choose_download_type": "Выберите формат аудио:",
-        "audio_button_mp3": "\ud83c\udfb5 MP3 (YouTube)",
-        "audio_button_sc": "\ud83c\udfb5 MP3 (SoundCloud)",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Скачиваю аудио... Подождите.",
         "download_progress": "Скачиваю: {percent} на скорости {speed}, осталось ~{eta}",
         "too_big": f"Файл слишком большой (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Попробуйте другое видео или трек.",
@@ -62,7 +62,7 @@ LANGUAGES = {
             "Hello! I am a bot for downloading audio from YouTube and SoundCloud.\n\n"
             "Send a YouTube or SoundCloud link (video or track), and I will offer you audio download options.\n\n"
             f"To use the bot, please subscribe to the channel {REQUIRED_CHANNEL}.\n"
-            "\n\ud83c\udfb5 I can also search for music by name! Just type /search and find your track.\n"
+            "\n🎵 I can also search for music by name! Just type /search and find your track.\n"
             "Enjoy!"
         ),
         "choose_lang": "Choose language:",
@@ -70,8 +70,8 @@ LANGUAGES = {
         "checking": "Checking link...",
         "not_youtube": "This is not a supported link. Please send a valid YouTube or SoundCloud link.",
         "choose_download_type": "Choose audio format:",
-        "audio_button_mp3": "\ud83c\udfb5 MP3 (YouTube)",
-        "audio_button_sc": "\ud83c\udfb5 MP3 (SoundCloud)",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Downloading audio... Please wait.",
         "download_progress": "Downloading: {percent} at {speed}, ETA ~{eta}",
         "too_big": f"File is too large (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Try another video or track.",
@@ -92,7 +92,7 @@ LANGUAGES = {
             "¡Hola! Soy un bot para descargar audio de YouTube y SoundCloud.\n\n"
             "Envía un enlace de YouTube o SoundCloud (video o pista), y te ofreceré opciones de descarga de audio.\n\n"
             f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL}.\n"
-            "\n\ud83c\udfb5 ¡También puedo buscar música por nombre! Escribe /search y encuentra tu pista.\n"
+            "\n🎵 ¡También puedo buscar música por nombre! Escribe /search y encuentra tu pista.\n"
             "¡Disfruta!"
         ),
         "choose_lang": "Elige idioma:",
@@ -100,8 +100,8 @@ LANGUAGES = {
         "checking": "Comprobando enlace...",
         "not_youtube": "Este no es un enlace soportado. Por favor, envía un enlace válido de YouTube o SoundCloud.",
         "choose_download_type": "Elige el formato de audio:",
-        "audio_button_mp3": "\ud83c\udfb5 MP3 (YouTube)",
-        "audio_button_sc": "\ud83c\udfb5 MP3 (SoundCloud)",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Descargando audio... Por favor espera.",
         "download_progress": "Descargando: {percent} a {speed}, ETA ~{eta}",
         "too_big": f"El archivo es demasiado grande (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Prueba con otro video o pista.",
@@ -122,7 +122,7 @@ LANGUAGES = {
             "Salam! Mən YouTube və SoundCloud-dan audio yükləmək üçün botam.\n\n"
             "YouTube və ya SoundCloud linki göndərin (video və ya trek), və mən sizə audio yükləmə seçimlərini təqdim edəcəyəm.\n\n"
             f"Botdan istifadə etmək üçün zəhmət olmasa {REQUIRED_CHANNEL} kanalına abunə olun.\n"
-            "\n\ud83c\udfb5 Mən həmçinin musiqini ada görə axtara bilirəm! Sadəcə /search yazın və trek tapın.\n"
+            "\n🎵 Mən həmçinin musiqini ada görə axtara bilirəm! Sadəcə /search yazın və trek tapın.\n"
             "Uğurlar!"
         ),
         "choose_lang": "Dil seçin:",
@@ -130,8 +130,8 @@ LANGUAGES = {
         "checking": "Link yoxlanılır...",
         "not_youtube": "Bu dəstəklənməyən linkdir. Zəhmət olmasa düzgün YouTube və ya SoundCloud linki göndərin.",
         "choose_download_type": "Audio formatını seçin:",
-        "audio_button_mp3": "\ud83c\udfb5 MP3 (YouTube)",
-        "audio_button_sc": "\ud83c\udfb5 MP3 (SoundCloud)",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Audio yüklənir... Zəhmət olmasa gözləyin.",
         "download_progress": "Yüklənir: {percent}, sürət {speed}, qalan vaxt ~{eta}",
         "too_big": f"Fayl çox böyükdür (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Başqa video və ya trek yoxlayın.",
@@ -152,7 +152,7 @@ LANGUAGES = {
             "Merhaba! Ben YouTube ve SoundCloud'dan ses indiren bir botum.\n\n"
             "Bir YouTube veya SoundCloud bağlantısı gönderin (video veya parça), ve size ses indirme seçenekleri sunacağım.\n\n"
             f"Botu kullanmak için lütfen {REQUIRED_CHANNEL} kanalına abone olun.\n"
-            "\n\ud83c\udfb5 Ayrıca isme göre müzik arayabilirim! Sadece /search yazın ve parçayı bulun.\n"
+            "\n🎵 Ayrıca isme göre müzik arayabilirim! Sadece /search yazın ve parçayı bulun.\n"
             "İyi eğlenceler!"
         ),
         "choose_lang": "Dil seçin:",
@@ -160,8 +160,8 @@ LANGUAGES = {
         "checking": "Bağlantı kontrol ediliyor...",
         "not_youtube": "Bu desteklenmeyen bir bağlantı. Lütfen geçerli bir YouTube veya SoundCloud bağlantısı gönderin.",
         "choose_download_type": "Ses formatını seçin:",
-        "audio_button_mp3": "\ud83c\udfb5 MP3 (YouTube)",
-        "audio_button_sc": "\ud83c\udfb5 MP3 (SoundCloud)",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Ses indiriliyor... Lütfen bekleyin.",
         "download_progress": "İndiriliyor: {percent}, hız {speed}, ETA ~{eta}",
         "too_big": f"Dosya çok büyük (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Başka bir video veya parça deneyin.",
@@ -182,7 +182,7 @@ LANGUAGES = {
             "Привіт! Я бот для завантаження аудіо з YouTube і SoundCloud.\n\n"
             "Надішліть посилання на YouTube або SoundCloud (відео чи трек), і я запропоную вам варіанти завантаження аудіо.\n\n"
             f"Щоб користуватися ботом, будь ласка, підпишіться на канал {REQUIRED_CHANNEL}.\n"
-            "\n\ud83c\udfb5 Також я вмію шукати музику за назвою! Просто напишіть /search і знайдіть потрібний трек.\n"
+            "\n🎵 Також я вмію шукати музику за назвою! Просто напишіть /search і знайдіть потрібний трек.\n"
             "Гарного користування!"
         ),
         "choose_lang": "Оберіть мову:",
@@ -190,8 +190,8 @@ LANGUAGES = {
         "checking": "Перевіряю посилання...",
         "not_youtube": "Це не підтримуване посилання. Надішліть коректне посилання на YouTube або SoundCloud.",
         "choose_download_type": "Оберіть формат аудіо:",
-        "audio_button_mp3": "\ud83c\udfb5 MP3 (YouTube)",
-        "audio_button_sc": "\ud83c\udfb5 MP3 (SoundCloud)",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Завантажую аудіо... Зачекайте.",
         "download_progress": "Завантаження: {percent} зі швидкістю {speed}, залишилось ~{eta}",
         "too_big": f"Файл занадто великий (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Спробуйте інше відео або трек.",
@@ -212,7 +212,7 @@ LANGUAGES = {
             "مرحبًا! أنا بوت لتحميل الصوت من يوتيوب وساوند كلاود.\n\n"
             "أرسل رابط YouTube أو SoundCloud (فيديو أو مقطع)، وسأقدم لك خيارات تحميل الصوت.\n\n"
             f"لاستخدام البوت، يرجى الاشتراك في قناة {REQUIRED_CHANNEL}.\n"
-            "\n\ud83c\udfb5 يمكنني أيضًا البحث عن الموسيقى بالاسم! فقط اكتب /search وابحث عن المقطع المطلوب.\n"
+            "\n🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! فقط اكتب /search وابحث عن المقطع المطلوب.\n"
             "استخدام ممتع!"
         ),
         "choose_lang": "اختر اللغة:",
@@ -220,8 +220,8 @@ LANGUAGES = {
         "checking": "جارٍ التحقق من الرابط...",
         "not_youtube": "هذا ليس رابطًا مدعومًا. يرجى إرسال رابط YouTube أو SoundCloud صحيح.",
         "choose_download_type": "اختر صيغة الصوت:",
-        "audio_button_mp3": "\ud83c\udfb5 MP3 (YouTube)",
-        "audio_button_sc": "\ud83c\udfb5 MP3 (SoundCloud)",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "جارٍ تحميل الصوت... يرجى الانتظار.",
         "download_progress": "جار التحميل: {percent} بسرعة {speed}، الوقت المتبقي ~{eta}",
         "too_big": f"الملف كبير جدًا (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). جرب فيديو أو مقطع آخر.",
@@ -546,6 +546,35 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     active_downloads = context.bot_data.setdefault('active_downloads', {})
     active_downloads[user_id] = {'task': task}
 
+def is_url(text):
+    text = text.lower().strip()
+    return (
+        text.startswith("http://") or text.startswith("https://")
+    ) and (
+        "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
+    )
+
+async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    text = update.message.text.strip()
+    active_downloads = context.bot_data.setdefault('active_downloads', {})
+
+    if user_id in active_downloads and active_downloads[user_id].get('task') and not active_downloads[user_id]['task'].done():
+        await update.message.reply_text(texts["download_in_progress"])
+        return
+
+    is_subscribed = await check_subscription(user_id, context.bot)
+    if not is_subscribed:
+        await update.message.reply_text(texts["not_subscribed"])
+        return
+
+    if is_url(text):
+        await ask_download_type(update, context, text)
+    else:
+        await handle_search_query(update, context)
+
 def main():
     load_user_langs()
     app = Application.builder().token(TOKEN).build()
@@ -558,9 +587,7 @@ def main():
     app.add_handler(CallbackQueryHandler(search_select_callback, pattern="^searchsel_"))
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND & ~filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"),
-        lambda update, context: handle_search_query(update, context)
-        if context.user_data.get('awaiting_search_query')
-        else process_link_message(update, context)
+        smart_message_handler
     ))
     async def set_commands(_):
         await app.bot.set_my_commands([
