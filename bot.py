@@ -562,7 +562,7 @@ def main():
         if context.user_data.get('awaiting_search_query')
         else process_link_message(update, context)
     ))
-    async def set_commands():
+    async def set_commands(_):
         await app.bot.set_my_commands([
             BotCommand("start", "Запуск и выбор языка"),
             BotCommand("languages", "Сменить язык / Change language"),
