@@ -512,7 +512,7 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_id = update.effective_user.id
     query = update.message.text.strip()
     await update.message.reply_text("Ищу музыку...")
-    results = await asyncio.to_thread(search_youtube, query)
+    results = await search_youtube(query)
     if not isinstance(results, list):
         results = []
     if not results:
