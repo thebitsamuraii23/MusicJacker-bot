@@ -308,10 +308,18 @@ def is_soundcloud_url(url):
     return "soundcloud.com/" in url.lower()
 
 def blocking_yt_dlp_download(ydl_opts, url_to_download):
+    import yt_dlp.utils
+    import logging
+    # Suppress yt_dlp tracebacks for unsupported URLs
+    yt_dlp_logger = logging.getLogger("yt_dlp")
+    yt_dlp_logger.setLevel(logging.WARNING)
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url_to_download])
         return True
+    except yt_dlp.utils.UnsupportedError as e:
+        # Raise a simple Exception with a clear message, no traceback
+        raise Exception("Unsupported URL: {}".format(url_to_download))
     except Exception as e:
         raise
 
@@ -371,8 +379,11 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
         except Exception as e:
             # Проверяем на Unsupported URL
             if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
+                # Не логируем traceback для этой ошибки
                 await update_status_message_async("Ссылка не поддерживается. Пожалуйста, проверьте правильность ссылки или попробуйте другой запрос.", show_cancel_button=False)
                 return
+            # Логируем только другие ошибки
+            logger.error(f"Ошибка при скачивании: {e}")
             raise
         downloaded_files_info = []
         all_temp_files = os.listdir(temp_dir)
@@ -414,6 +425,8 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
             else:
                 await context.bot.send_message(chat_id=chat_id, text="Ссылка не поддерживается. Пожалуйста, проверьте правильность ссылки или попробуйте другой запрос.")
             return
+        # Логируем только другие ошибки
+        logger.error(f"Ошибка при скачивании: {e}")
         if status_message:
             await update_status_message_async(texts["error"] + str(e), show_cancel_button=False)
         else:
