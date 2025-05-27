@@ -254,7 +254,7 @@ LANG_CODES = {
     "العربية": "ar"
 }
 
-SEARCH_RESULTS_LIMIT = 6
+SEARCH_RESULTS_LIMIT = 10  # Было 6, теперь 10
 
 user_langs = {}
 USER_LANGS_FILE = "user_languages.json"
@@ -366,7 +366,14 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
             'verbose': True
         }
         ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
-        await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url)
+        try:
+            await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url)
+        except Exception as e:
+            # Проверяем на Unsupported URL
+            if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
+                await update_status_message_async("Ссылка не поддерживается. Пожалуйста, проверьте правильность ссылки или попробуйте другой запрос.", show_cancel_button=False)
+                return
+            raise
         downloaded_files_info = []
         all_temp_files = os.listdir(temp_dir)
         for file_name in all_temp_files:
@@ -400,6 +407,13 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
         else:
             await context.bot.send_message(chat_id=chat_id, text=texts["cancelled"])
     except Exception as e:
+        # Проверяем на Unsupported URL
+        if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
+            if status_message:
+                await update_status_message_async("Ссылка не поддерживается. Пожалуйста, проверьте правильность ссылки или попробуйте другой запрос.", show_cancel_button=False)
+            else:
+                await context.bot.send_message(chat_id=chat_id, text="Ссылка не поддерживается. Пожалуйста, проверьте правильность ссылки или попробуйте другой запрос.")
+            return
         if status_message:
             await update_status_message_async(texts["error"] + str(e), show_cancel_button=False)
         else:
@@ -498,6 +512,11 @@ async def search_youtube(query: str):
             if entries is None:
                 return []
             return entries[:SEARCH_RESULTS_LIMIT]
+    except yt_dlp.utils.DownloadError as e:
+        # Проверяем на Unsupported URL
+        if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
+            return 'unsupported_url'
+        return []
     except Exception as e:
         logger.error(f"Ошибка поиска на YouTube: {e}")
         return []
@@ -513,6 +532,10 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.message.text.strip()
     await update.message.reply_text("Ищу музыку...")
     results = await search_youtube(query)
+    if results == 'unsupported_url':
+        await update.message.reply_text("Ссылка не поддерживается. Пожалуйста, проверьте правильность ссылки или попробуйте другой запрос.")
+        context.user_data.pop('awaiting_search_query', None)
+        return
     if not isinstance(results, list):
         results = []
     if not results:
