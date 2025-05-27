@@ -495,25 +495,28 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
     active_downloads[requesting_user_id] = {'task': task}
 
 async def search_youtube(query: str):
+    # Если это ссылка, не делать поиск по названию, а сразу вернуть unsupported_url
+    if is_url(query):
+        return 'unsupported_url'
     ydl_opts = {
         'quiet': True,
         'skip_download': True,
-        'extract_flat': 'in_playlist',
+        'extract_flat': True,
         'nocheckcertificate': True,
-        'default_search': 'ytsearch',
-        'forcejson': True,
+        'default_search': None,
         'noplaylist': True,
         'dump_single_json': True,
     }
     try:
+        # Всегда используем ytsearch10: чтобы получить 10 результатов
+        search_query = f"ytsearch10:{query}"
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(query, download=False)
+            info = ydl.extract_info(search_query, download=False)
             entries = info.get('entries', [])
             if entries is None:
                 return []
             return entries[:SEARCH_RESULTS_LIMIT]
     except yt_dlp.utils.DownloadError as e:
-        # Проверяем на Unsupported URL
         if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
             return 'unsupported_url'
         return []
