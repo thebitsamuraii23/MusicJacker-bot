@@ -33,9 +33,11 @@ LANGUAGES = {
             "Отправьте ссылку на YouTube или SoundCloud (видео или трек), и я предложу вам варианты загрузки аудио.\n\n"
             f"Для работы с ботом, подпишитесь на канал {REQUIRED_CHANNEL}.\n"
             "\n🎵 Также я умею искать музыку по названию! Просто напишите /search и найдите нужный трек.\n"
-            "Приятного использования!"
-            "Не забудьте подписаться на канал для обновлений и поддержки @ytdlpload_bot. artoflife2303.github.io/miniblog"
+            "Приятного использования! "
+            "Не забудьте подписаться на канал для обновлений и поддержки @ytdlpload_bot. artoflife2303.github.io/miniblog "
+            "Веб версия бота: youtubemusicdownloader.life, если не работает то https://youtubemusicdownloader-268876009628.europe-west1.run.app"
         ),
+
         "choose_lang": "Выберите язык / Choose language:",
         "not_subscribed": f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова.",
         "checking": "Проверяю ссылку...",
@@ -66,6 +68,7 @@ LANGUAGES = {
             "\n🎵 I can also search for music by name! Just type /search and find your track.\n"
             "Enjoy!"
             "Don't forget to subscribe to the channel for updates and support @ytdlpdeveloper. artoflife2303.github.io/miniblog"
+            "Web version of the bot: youtubemusicdownloader.life, if it doesn't work then https://youtubemusicdownloader-268876009628.europe-west1.run.app"
         ),
         "choose_lang": "Choose language:",
         "not_subscribed": f"To use the bot, please subscribe to {REQUIRED_CHANNEL} and try again.",
@@ -97,6 +100,10 @@ LANGUAGES = {
             "\n🎵 ¡También puedo buscar música por nombre! Escribe /search y encuentra tu pista.\n"
             "¡Disfruta!"
             "No olvides suscribirte al canal para actualizaciones y soporte @ytdlpdeveloper. artoflife2303.github.io/miniblog"
+            "Versión web del bot: youtubemusicdownloader.life, si no funciona entonces https://youtubemusicdownloader-268876009628.europe-west1.run.app"
+
+            
+        
         ),
         "choose_lang": "Elige idioma:",
         "not_subscribed": f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL} y vuelve a intentarlo.",
@@ -128,6 +135,7 @@ LANGUAGES = {
             "\n🎵 Mən həmçinin adla musiqi axtara bilirəm! Sadəcə /search yazın və trek tapın.\n"
             "Uğurlar!"
             "Botu istifadə etmək üçün kanala abunə olmağı unutmayın @ytdlppload_bot. artoflife2303.github.io/miniblog"
+            "Botun veb versiyası: youtubemusicdownloader.life, əgər işləmirsə https://youtubemusicdownloader-268876009628.europe-west1.run.app"
         ),
         "choose_lang": "Dili seçin:",
         "not_subscribed": f"Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun və yenidən cəhd edin.",
@@ -189,7 +197,7 @@ LANGUAGES = {
             f"Щоб користуватися ботом, підпишіться на канал {REQUIRED_CHANNEL}.\n"
             "\n🎵 Також я вмію шукати музику за назвою! Просто напишіть /search і знайдіть потрібний трек.\n"
             "Гарного користування!"
-            "Не забудьте підписатися на канал для оновлень та підтримки @ytdlppload_bot. artoflife2303.github.io/miniblog"
+            "Не забудьте підписатися на канал для оновлень та підтримки @ytdlpload_bot. artoflife2303.github.io/miniblog"
         ),
         "choose_lang": "Оберіть мову:",
         "not_subscribed": f"Щоб користуватися ботом, підпишіться на канал {REQUIRED_CHANNEL} і спробуйте ще раз.",
@@ -221,6 +229,7 @@ LANGUAGES = {
             "\n🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! فقط اكتب /search وابحث عن المقطع المطلوب.\n"
             "استخدام ممتع!"
             "لا تنس الاشتراك في القناة للحصول على التحديثات والدعم @ytdlppload_bot. artoflife2303.github.io/miniblog"
+            
         ),
         "choose_lang": "اختر اللغة:",
         "not_subscribed": f"لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNEL} ثم المحاولة مرة أخرى.",
@@ -615,6 +624,26 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     else:
         await handle_search_query(update, context)
 
+async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    active_downloads = context.bot_data.setdefault('active_downloads', {})
+    download = active_downloads.get(user_id)
+    if not download or not download.get('task') or download['task'].done():
+        try:
+            await query.edit_message_text(texts["already_cancelled_or_done"])
+        except Exception:
+            pass
+        return
+    download['task'].cancel()
+    try:
+        await query.edit_message_text(texts["cancelling"])
+    except Exception:
+        pass
+
 def main():
     load_user_langs()
     app = Application.builder().token(TOKEN).build()
@@ -625,6 +654,7 @@ def main():
     app.add_handler(MessageHandler(filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"), set_language))
     app.add_handler(CallbackQueryHandler(select_download_type_callback, pattern="^dltype_"))
     app.add_handler(CallbackQueryHandler(search_select_callback, pattern="^searchsel_"))
+    app.add_handler(CallbackQueryHandler(cancel_download_callback, pattern="^cancel_"))
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND & ~filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"),
         smart_message_handler
