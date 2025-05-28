@@ -67,7 +67,7 @@ LANGUAGES = {
             f"To use the bot, please subscribe to the channel {REQUIRED_CHANNEL}.\n"
             "\n🎵 I can also search for music by name! Just type /search and find your track.\n"
             "Enjoy!"
-            "Don't forget to subscribe to the channel for updates and support @ytdlpdeveloper. artoflife2303.github.io/miniblog"
+            "Don't forget to subscribe to the channel for updates and support @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
             "Web version of the bot: youtubemusicdownloader.life, if it doesn't work then https://youtubemusicdownloader-268876009628.europe-west1.run.app"
         ),
         "choose_lang": "Choose language:",
@@ -99,8 +99,9 @@ LANGUAGES = {
             f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL}.\n"
             "\n🎵 ¡También puedo buscar música por nombre! Escribe /search y encuentra tu pista.\n"
             "¡Disfruta!"
-            "No olvides suscribirte al canal para actualizaciones y soporte @ytdlpdeveloper. artoflife2303.github.io/miniblog"
+            "No olvides suscribirte al canal para actualizaciones y soporte @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
             "Versión web del bot: youtubemusicdownloader.life, si no funciona entonces https://youtubemusicdownloader-268876009628.europe-west1.run.app"
+    
 
             
         
@@ -134,7 +135,7 @@ LANGUAGES = {
             f"Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun.\n"
             "\n🎵 Mən həmçinin adla musiqi axtara bilirəm! Sadəcə /search yazın və trek tapın.\n"
             "Uğurlar!"
-            "Botu istifadə etmək üçün kanala abunə olmağı unutmayın @ytdlppload_bot. artoflife2303.github.io/miniblog"
+            "Botu istifadə etmək üçün kanala abunə olmağı unutmayın @ytdlppload_bot. artoflife2303.github.io/miniblog. \n"
             "Botun veb versiyası: youtubemusicdownloader.life, əgər işləmirsə https://youtubemusicdownloader-268876009628.europe-west1.run.app"
         ),
         "choose_lang": "Dili seçin:",
@@ -166,7 +167,8 @@ LANGUAGES = {
             f"Botu kullanmak için {REQUIRED_CHANNEL} kanalına abone olun.\n"
             "\n🎵 Ayrıca isimle müzik arayabilirim! Sadece /search yazın ve parçanızı bulun.\n"
             "İyi eğlenceler!"
-            "Botu kullanmak için kanala abone olmayı unutmayın @ytdlppload_bot. artoflife2303.github.io/miniblog"
+            "Botu kullanmak için kanala abone olmayı unutmayın @ytdlpdeveloper. artoflife2303.github.io/miniblog"
+            
         ),
         "choose_lang": "Dil seçin:",
         "not_subscribed": f"Botu kullanmak için lütfen {REQUIRED_CHANNEL} kanalına abone olun ve tekrar deneyin.",
@@ -197,7 +199,10 @@ LANGUAGES = {
             f"Щоб користуватися ботом, підпишіться на канал {REQUIRED_CHANNEL}.\n"
             "\n🎵 Також я вмію шукати музику за назвою! Просто напишіть /search і знайдіть потрібний трек.\n"
             "Гарного користування!"
-            "Не забудьте підписатися на канал для оновлень та підтримки @ytdlpload_bot. artoflife2303.github.io/miniblog"
+            "Не забудьте підписатися на канал для оновлень та підтримки @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
+            
+            
+
         ),
         "choose_lang": "Оберіть мову:",
         "not_subscribed": f"Щоб користуватися ботом, підпишіться на канал {REQUIRED_CHANNEL} і спробуйте ще раз.",
@@ -228,7 +233,7 @@ LANGUAGES = {
             f"لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNEL}.\n"
             "\n🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! فقط اكتب /search وابحث عن المقطع المطلوب.\n"
             "استخدام ممتع!"
-            "لا تنس الاشتراك في القناة للحصول على التحديثات والدعم @ytdlppload_bot. artoflife2303.github.io/miniblog"
+            "لا تنس الاشتراك في القناة للحصول على التحديثات والدعم @ytdlpdeveloper. artoflife2303.github.io/miniblog"
             
         ),
         "choose_lang": "اختر اللغة:",
