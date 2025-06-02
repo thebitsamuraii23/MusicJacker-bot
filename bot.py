@@ -135,7 +135,7 @@ LANGUAGES = {
             f"Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun.\n"
             "\n🎵 Mən həmçinin adla musiqi axtara bilirəm! Sadəcə /search yazın və trek tapın.\n"
             "Uğurlar!"
-            "Botu istifadə etmək üçün kanala abunə olmağı unutmayın @ytdlppload_bot. artoflife2303.github.io/miniblog. \n"
+            "Botu istifadə etmək üçün kanala abunə olmağı unutmayın @ytdlpload_bot. artoflife2303.github.io/miniblog. \n"
             "Botun veb versiyası: youtubemusicdownloader.life, əgər işləmirsə https://youtubemusicdownloader-268876009628.europe-west1.run.app"
         ),
         "choose_lang": "Dili seçin:",
@@ -551,12 +551,13 @@ async def search_youtube(query: str):
         return []
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
     await update.message.reply_text(
         "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрзится в формате MP3.\n"
         "Введите /cancel для отмены поиска.\n"
         "Введите /search для поиска музыки по названию (YouTube).",
     )
-    context.user_data['awaiting_search_query'] = True
+    context.user_data[f'awaiting_search_query_{user_id}'] = True
 
 async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -565,37 +566,41 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     results = await search_youtube(query)
     if results == 'unsupported_url':
         await update.message.reply_text("Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос.(Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)")
-        context.user_data.pop('awaiting_search_query', None)
+        context.user_data.pop(f'awaiting_search_query_{user_id}', None)
         return
     if not isinstance(results, list):
         results = []
     if not results:
         await update.message.reply_text("Ничего не найдено. Попробуйте другой запрос.")
-        context.user_data.pop('awaiting_search_query', None)
+        context.user_data.pop(f'awaiting_search_query_{user_id}', None)
         return
     keyboard = []
     for idx, entry in enumerate(results):
         title = entry.get('title', 'Без названия')
         video_id = entry.get('id')
-        keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{video_id}")])
+        keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{video_id}")])
     await update.message.reply_text(
         "Выберите трек для скачивания MP3:",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-    context.user_data['search_results'] = {entry.get('id'): entry for entry in results}
-    context.user_data.pop('awaiting_search_query', None)
+    context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
+    context.user_data.pop(f'awaiting_search_query_{user_id}', None)
 
 async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
     try:
-        video_id = query.data.split("_")[1]
+        _, sel_user_id, video_id = query.data.split("_", 2)
+        sel_user_id = int(sel_user_id)
     except Exception:
         await query.edit_message_text("Ошибка выбора трека.")
         return
+    if user_id != sel_user_id:
+        await query.edit_message_text("Эта кнопка не для вас.")
+        return
     url = f"https://youtu.be/{video_id}"
-    await query.edit_message_text("Скачиваю выбранный трек в MP3...")
+    await query.edit_message_text("Скачиваю выбранный трек в MP3...", reply_markup=None)
     task = asyncio.create_task(handle_download(query, context, url, LANGUAGES[get_user_lang(user_id)], user_id, "audio_mp3"))
     active_downloads = context.bot_data.setdefault('active_downloads', {})
     active_downloads[user_id] = {'task': task}
