@@ -35,7 +35,7 @@ LANGUAGES = {
             "\n🎵 Также я умею искать музыку по названию! Просто напишите /search и найдите нужный трек.\n"
             "Приятного использования! "
             "Не забудьте подписаться на канал для обновлений и поддержки @ytdlpload_bot. artoflife2303.github.io/miniblog "
-            "Веб версия бота: youtubemusicdownloader.life, если не работает то https://youtubemusicdownloader-268876009628.europe-west1.run.app"
+            "Веб версия бота: youtubemusicdownloader.life, если не работает то bit.ly/ytmusicload"
         ),
 
         "choose_lang": "Выберите язык / Choose language:",
@@ -68,7 +68,7 @@ LANGUAGES = {
             "\n🎵 I can also search for music by name! Just type /search and find your track.\n"
             "Enjoy!"
             "Don't forget to subscribe to the channel for updates and support @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
-            "Web version of the bot: youtubemusicdownloader.life, if it doesn't work then https://youtubemusicdownloader-268876009628.europe-west1.run.app"
+            "Web version of the bot: youtubemusicdownloader.life, if it doesn't work then bit.ly/ytmusicload"
         ),
         "choose_lang": "Choose language:",
         "not_subscribed": f"To use the bot, please subscribe to {REQUIRED_CHANNEL} and try again.",
@@ -100,7 +100,7 @@ LANGUAGES = {
             "\n🎵 ¡También puedo buscar música por nombre! Escribe /search y encuentra tu pista.\n"
             "¡Disfruta!"
             "No olvides suscribirte al canal para actualizaciones y soporte @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
-            "Versión web del bot: youtubemusicdownloader.life, si no funciona entonces https://youtubemusicdownloader-268876009628.europe-west1.run.app"
+            "Versión web del bot: youtubemusicdownloader.life, si no funciona entonces bit.ly/ytmusicload"
     
 
             
@@ -136,7 +136,7 @@ LANGUAGES = {
             "\n🎵 Mən həmçinin adla musiqi axtara bilirəm! Sadəcə /search yazın və trek tapın.\n"
             "Uğurlar!"
             "Botu istifadə etmək üçün kanala abunə olmağı unutmayın @ytdlpload_bot. artoflife2303.github.io/miniblog. \n"
-            "Botun veb versiyası: youtubemusicdownloader.life, əgər işləmirsə https://youtubemusicdownloader-268876009628.europe-west1.run.app"
+            "Botun veb versiyası: youtubemusicdownloader.life, əgər işləmirsə bit.ly/ytmusicload"
         ),
         "choose_lang": "Dili seçin:",
         "not_subscribed": f"Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun və yenidən cəhd edin.",
@@ -167,7 +167,8 @@ LANGUAGES = {
             f"Botu kullanmak için {REQUIRED_CHANNEL} kanalına abone olun.\n"
             "\n🎵 Ayrıca isimle müzik arayabilirim! Sadece /search yazın ve parçanızı bulun.\n"
             "İyi eğlenceler!"
-            "Botu kullanmak için kanala abone olmayı unutmayın @ytdlpdeveloper. artoflife2303.github.io/miniblog"
+            "Botu kullanmak için kanala abone olmayı unutmayın @ytdlpdeveloper. artoflife2303.github.io/miniblog \n\n"
+            "Web bot versiyonu: youtubemusicdownloader.life, eğer çalışmıyorsa hbit.ly/ytmusicload"
             
         ),
         "choose_lang": "Dil seçin:",
@@ -200,6 +201,7 @@ LANGUAGES = {
             "\n🎵 Також я вмію шукати музику за назвою! Просто напишіть /search і знайдіть потрібний трек.\n"
             "Гарного користування!"
             "Не забудьте підписатися на канал для оновлень та підтримки @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
+            "Веб-версія бота: youtubemusicdownloader.life, якщо не працює, то bit.ly/ytmusicload"
             
             
 
@@ -234,6 +236,7 @@ LANGUAGES = {
             "\n🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! فقط اكتب /search وابحث عن المقطع المطلوب.\n"
             "استخدام ممتع!"
             "لا تنس الاشتراك في القناة للحصول على التحديثات والدعم @ytdlpdeveloper. artoflife2303.github.io/miniblog"
+            "النسخة الويب من البوت: youtubemusicdownloader.life، إذا لم تعمل فجرّب bit.ly/ytmusicload"
             
         ),
         "choose_lang": "اختر اللغة:",
