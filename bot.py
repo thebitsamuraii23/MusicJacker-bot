@@ -26,6 +26,26 @@ REQUIRED_CHANNEL = os.getenv("REQUIRED_CHANNEL", "@ytdlpdeveloper")
 TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024
 TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ"
 
+USER_LANGS_FILE = "user_languages.json"
+LANG_KEYBOARD = ReplyKeyboardMarkup(
+    [
+        ["Русский", "English"],
+        ["Español", "Azərbaycan dili"],
+        ["Türkçe", "Українська"],
+        ["العربية"]
+    ],
+    resize_keyboard=True,
+    one_time_keyboard=True
+)
+LANG_CODES = {
+    "Русский": "ru", "English": "en", "Español": "es",
+    "Azərbaycan dili": "az", "Türkçe": "tr", "Українська": "uk",
+    "العربية": "ar"
+}
+
+SEARCH_RESULTS_LIMIT = 10
+user_langs = {}
+
 LANGUAGES = {
     "ru": {
         "start": (
@@ -37,7 +57,6 @@ LANGUAGES = {
             "Не забудьте подписаться на канал для обновлений и поддержки @ytdlpdeveloper. artoflife2303.github.io/miniblog "
             "Веб версия бота: youtubemusicdownloader.life, если не работает то bit.ly/ytmusicload"
         ),
-
         "choose_lang": "Выберите язык / Choose language:",
         "not_subscribed": f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова.",
         "checking": "Проверяю ссылку...",
@@ -58,7 +77,20 @@ LANGUAGES = {
         "cancelled": "Загрузка отменена.",
         "download_in_progress": "Другая загрузка уже в процессе. Пожалуйста, подождите или отмените её.",
         "already_cancelled_or_done": "Загрузка уже отменена или завершена.",
-        "url_error_generic": "Не удалось обработать URL. Убедитесь, что это корректная ссылка на YouTube или SoundCloud."
+        "url_error_generic": "Не удалось обработать URL. Убедитесь, что это корректная ссылка на YouTube или SoundCloud.",
+        "search_prompt": (
+            "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрзится в формате MP3.\n"
+            "Введите /cancel для отмены поиска.\n"
+            "Введите /search для поиска музыки по названию (YouTube)."
+        ),
+        "searching": "Ищу музыку...",
+        "unsupported_url_in_search": "Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос.(Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)",
+        "no_results": "Ничего не найдено. Попробуйте другой запрос.",
+        "choose_track": "Выберите трек для скачивания MP3:",
+        "downloading_selected_track": "Скачиваю выбранный трек в MP3...",
+        "copyright_pre": "⚠️ Внимание! Загружаемый вами материал может быть защищён авторским правом. Используйте только для личных целей. Если вы являетесь правообладателем и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com для удаления контента.",
+        "copyright_post": "⚠️ Данный материал может быть защищён авторским правом. Используйте только для личных целей. Если вы правообладатель и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com.",
+        "copyright_command": "⚠️ Внимание! Все материалы, скачиваемые через этого бота, могут быть защищены авторским правом. Используйте только для личных целей. Если вы правообладатель и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com, и мы удалим соответствующий контент."
     },
     "en": {
         "start": (
@@ -66,7 +98,7 @@ LANGUAGES = {
             "Send a YouTube or SoundCloud link (video or track), and I will offer you audio download options.\n\n"
             f"To use the bot, please subscribe to the channel {REQUIRED_CHANNEL}.\n"
             "\n🎵 I can also search for music by name! Just type /search and find your track.\n"
-            "Enjoy!"
+            "Enjoy!\n"
             "Don't forget to subscribe to the channel for updates and support @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
             "Web version of the bot: youtubemusicdownloader.life, if it doesn't work then bit.ly/ytmusicload"
         ),
@@ -90,7 +122,20 @@ LANGUAGES = {
         "cancelled": "Download cancelled.",
         "download_in_progress": "Another download is already in progress. Please wait or cancel it.",
         "already_cancelled_or_done": "Download already cancelled or completed.",
-        "url_error_generic": "Failed to process URL. Make sure it's a valid YouTube or SoundCloud link."
+        "url_error_generic": "Failed to process URL. Make sure it's a valid YouTube or SoundCloud link.",
+        "search_prompt": (
+            "Enter the track name or artist. Then click on the music, it will download in MP3 format.\n"
+            "Enter /cancel to cancel the search.\n"
+            "Enter /search to search for music by name (YouTube)."
+        ),
+        "searching": "Searching for music...",
+        "unsupported_url_in_search": "The link is not supported. Please check the link or try another query. (Alternatively, if it didn't work, you can download a track from another artist or Remix)",
+        "no_results": "Nothing found. Try another query.",
+        "choose_track": "Select a track to download in MP3:",
+        "downloading_selected_track": "Downloading the selected track in MP3...",
+        "copyright_pre": "⚠️ Warning! The material you are about to download may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, please contact copyrightytdlpbot@gmail.com for removal.",
+        "copyright_post": "⚠️ This material may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, contact copyrightytdlpbot@gmail.com.",
+        "copyright_command": "⚠️ Warning! All materials downloaded via this bot may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, contact copyrightytdlpbot@gmail.com and we will remove the content."
     },
     "es": {
         "start": (
@@ -101,10 +146,6 @@ LANGUAGES = {
             "¡Disfruta!"
             "No olvides suscribirte al canal para actualizaciones y soporte @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
             "Versión web del bot: youtubemusicdownloader.life, si no funciona entonces bit.ly/ytmusicload"
-    
-
-            
-        
         ),
         "choose_lang": "Elige idioma:",
         "not_subscribed": f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL} y vuelve a intentarlo.",
@@ -126,39 +167,20 @@ LANGUAGES = {
         "cancelled": "Descarga cancelada.",
         "download_in_progress": "Otra descarga ya está en progreso. Por favor espera o cancélala.",
         "already_cancelled_or_done": "La descarga ya fue cancelada o completada.",
-        "url_error_generic": "No se pudo procesar la URL. Asegúrate de que sea un enlace válido de YouTube o SoundCloud."
-    },
-    "az": {
-        "start": (
-            "Salam! Mən YouTube və SoundCloud-dan audio yükləmək üçün botam.\n\n"
-            "YouTube və ya SoundCloud linki göndərin (video və ya trek), mən sizə audio yükləmə variantları təklif edəcəyəm.\n\n"
-            f"Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun.\n"
-            "\n🎵 Mən həmçinin adla musiqi axtara bilirəm! Sadəcə /search yazın və trek tapın.\n"
-            "Uğurlar!"
-            "Botu istifadə etmək üçün kanala abunə olmağı unutmayın @ytdlpload_bot. artoflife2303.github.io/miniblog. \n"
-            "Botun veb versiyası: youtubemusicdownloader.life, əgər işləmirsə bit.ly/ytmusicload"
+        "url_error_generic": "No se pudo procesar la URL. Asegúrate de que sea un enlace válido de YouTube o SoundCloud.",
+        "search_prompt": (
+            "Ingrese el nombre de la pista o artista. Luego haga clic en la música, se descargará en formato MP3.\n"
+            "Ingrese /cancel para cancelar la búsqueda.\n"
+            "Ingrese /search para buscar música por nombre (YouTube)."
         ),
-        "choose_lang": "Dili seçin:",
-        "not_subscribed": f"Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun və yenidən cəhd edin.",
-        "checking": "Link yoxlanılır...",
-        "not_youtube": "Bu dəstəklənməyən linkdir. Zəhmət olmasa, düzgün YouTube və ya SoundCloud linki göndərin.",
-        "choose_download_type": "Audio formatını seçin:",
-        "audio_button_mp3": "🎵 MP3 (YouTube)",
-        "audio_button_sc": "🎵 MP3 (SoundCloud)",
-        "downloading_audio": "Audio yüklənir... Zəhmət olmasa, gözləyin.",
-        "download_progress": "Yüklənir: {percent} sürətlə {speed}, təxmini vaxt ~{eta}",
-        "too_big": f"Fayl çox böyükdür (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Başqa video və ya trek yoxlayın.",
-        "done_audio": "Hazırdır! Audio göndərildi.",
-        "error": "Bir xəta baş verdi. Linki yoxlayın və yenidən cəhd edin!\n",
-        "error_private_video": "Bu şəxsi videodur və yüklənə bilməz.",
-        "error_video_unavailable": "Video mövcud deyil.",
-        "sending_file": "{total} fayldan {index}-ci göndərilir...",
-        "cancel_button": "Ləğv et",
-        "cancelling": "Yükləmə ləğv olunur...",
-        "cancelled": "Yükləmə ləğv edildi.",
-        "download_in_progress": "Başqa bir yükləmə artıq davam edir. Zəhmət olmasa, gözləyin və ya ləğv edin.",
-        "already_cancelled_or_done": "Yükləmə artıq ləğv edilib və ya tamamlanıb.",
-        "url_error_generic": "URL işlənə bilmədi. Düzgün YouTube və ya SoundCloud linki olduğuna əmin olun."
+        "searching": "Buscando música...",
+        "unsupported_url_in_search": "El enlace no es compatible. Por favor, compruebe el enlace o pruebe con otra consulta. (Alternativamente, si no funcionó, puede descargar una pista de otro artista o un Remix)",
+        "no_results": "No se encontraron resultados. Intente con otra consulta.",
+        "choose_track": "Seleccione una pista para descargar en MP3:",
+        "downloading_selected_track": "Descargando la pista seleccionada en MP3...",
+        "copyright_pre": "⚠️ ¡Atención! El material que está a punto de descargar puede estar protegido por derechos de autor. Úselo solo para fines personales. Si es titular de derechos y cree que se están violando sus derechos, escriba a copyrightytdlpbot@gmail.com para eliminar el contenido.",
+        "copyright_post": "⚠️ Este material puede estar protegido por derechos de autor. Úselo solo para fines personales. Si es titular de derechos y cree que se están violando sus derechos, escriba a copyrightytdlpbot@gmail.com.",
+        "copyright_command": "⚠️ ¡Atención! Todo el material descargado a través de este bot puede estar protegido por derechos de autor. Úselo solo para fines personales. Si es titular de derechos y cree que se están violando sus derechos, escriba a copyrightytdlpbot@gmail.com y eliminaremos el contenido."
     },
     "tr": {
         "start": (
@@ -169,7 +191,6 @@ LANGUAGES = {
             "İyi eğlenceler!"
             "Botu kullanmak için kanala abone olmayı unutmayın @ytdlpdeveloper. artoflife2303.github.io/miniblog \n\n"
             "Web bot versiyonu: youtubemusicdownloader.life, eğer çalışmıyorsa hbit.ly/ytmusicload"
-            
         ),
         "choose_lang": "Dil seçin:",
         "not_subscribed": f"Botu kullanmak için lütfen {REQUIRED_CHANNEL} kanalına abone olun ve tekrar deneyin.",
@@ -191,98 +212,74 @@ LANGUAGES = {
         "cancelled": "İndirme iptal edildi.",
         "download_in_progress": "Başka bir indirme zaten devam ediyor. Lütfen bekleyin veya iptal edin.",
         "already_cancelled_or_done": "İndirme zaten iptal edildi veya tamamlandı.",
-        "url_error_generic": "URL işlenemedi. Geçerli bir YouTube veya SoundCloud bağlantısı olduğundan emin olun."
-    },
-    "uk": {
-        "start": (
-            "Вітаю! Я бот для завантаження аудіо з YouTube та SoundCloud.\n\n"
-            "Надішліть посилання на YouTube або SoundCloud (відео чи трек), і я запропоную вам варіанти завантаження аудіо.\n\n"
-            f"Щоб користуватися ботом, підпишіться на канал {REQUIRED_CHANNEL}.\n"
-            "\n🎵 Також я вмію шукати музику за назвою! Просто напишіть /search і знайдіть потрібний трек.\n"
-            "Гарного користування!"
-            "Не забудьте підписатися на канал для оновлень та підтримки @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
-            "Веб-версія бота: youtubemusicdownloader.life, якщо не працює, то bit.ly/ytmusicload"
-            
-            
-
+        "url_error_generic": "URL işlenemedi. Geçerli bir YouTube veya SoundCloud bağlantısı olduğundan emin olun.",
+        "search_prompt": (
+            "Parça adı veya sanatçı adı girin. Ardından müziğe tıklayın, MP3 formatında indirilecektir.\n"
+            "Aramayı iptal etmek için /cancel yazın.\n"
+            "Müzik adıyla arama yapmak için /search yazın (YouTube)."
         ),
-        "choose_lang": "Оберіть мову:",
-        "not_subscribed": f"Щоб користуватися ботом, підпишіться на канал {REQUIRED_CHANNEL} і спробуйте ще раз.",
-        "checking": "Перевіряю посилання...",
-        "not_youtube": "Це непідтримуване посилання. Надішліть коректне посилання на YouTube або SoundCloud.",
-        "choose_download_type": "Оберіть формат аудіо:",
-        "audio_button_mp3": "🎵 MP3 (YouTube)",
-        "audio_button_sc": "🎵 MP3 (SoundCloud)",
-        "downloading_audio": "Завантажую аудіо... Зачекайте.",
-        "download_progress": "Завантаження: {percent} зі швидкістю {speed}, залишилось ~{eta}",
-        "too_big": f"Файл занадто великий (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Спробуйте інше відео або трек.",
-        "done_audio": "Готово! Аудіо надіслано.",
-        "error": "Щось пішло не так. Перевірте посилання або спробуйте ще раз!\n",
-        "error_private_video": "Це приватне відео і його не можна завантажити.",
-        "error_video_unavailable": "Відео недоступне.",
-        "sending_file": "Надсилаю файл {index} з {total}...",
-        "cancel_button": "Скасувати",
-        "cancelling": "Скасовую завантаження...",
-        "cancelled": "Завантаження скасовано.",
-        "download_in_progress": "Інше завантаження вже триває. Будь ласка, зачекайте або скасуйте його.",
-        "already_cancelled_or_done": "Завантаження вже скасовано або завершено.",
-        "url_error_generic": "Не вдалося обробити URL. Переконайтеся, що це коректне посилання на YouTube або SoundCloud."
+        "searching": "Müzik aranıyor...",
+        "unsupported_url_in_search": "Bağlantı desteklenmiyor. Lütfen bağlantıyı kontrol edin veya başka bir sorgu deneyin. (Alternatif olarak, işe yaramadıysa, başka bir sanatçıdan veya Remix bir parça indirebilirsiniz)",
+        "no_results": "Hiçbir sonuç bulunamadı. Başka bir sorgu deneyin.",
+        "choose_track": "MP3 olarak indirmek için bir parça seçin:",
+        "downloading_selected_track": "Seçilen parça MP3 olarak indiriliyor...",
+        "copyright_pre": "⚠️ Dikkat! İndirmek üzere olduğunuz materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın.",
+        "copyright_post": "⚠️ Bu materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail.com adresine yazın.",
+        "copyright_command": "⚠️ Dikkat! Bu bot üzerinden indirilen tüm materyaller telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail.com adresine yazın, ilgili içeriği kaldıracağız."
     },
     "ar": {
         "start": (
-            "مرحبًا! أنا بوت لتحميل الصوت من YouTube وSoundCloud.\n\n"
-            "أرسل رابط YouTube أو SoundCloud (فيديو أو مقطع)، وسأقدم لك خيارات تحميل الصوت.\n\n"
+            "مرحبًا! أنا بوت لتنزيل الصوت من YouTube و SoundCloud.\n\n"
+            "أرسل رابط YouTube أو SoundCloud (فيديو أو مسار) وسأقدم لك خيارات تنزيل الصوت.\n\n"
             f"لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNEL}.\n"
-            "\n🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! فقط اكتب /search وابحث عن المقطع المطلوب.\n"
-            "استخدام ممتع!"
-            "لا تنس الاشتراك في القناة للحصول على التحديثات والدعم @ytdlpdeveloper. artoflife2303.github.io/miniblog"
-            "النسخة الويب من البوت: youtubemusicdownloader.life، إذا لم تعمل فجرّب bit.ly/ytmusicload"
-            
+            "\n🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! ما عليك سوى كتابة /search والعثور على المسار الخاص بك.\n"
+            "استمتع!\n"
+            "لا تنس الاشتراك في القناة للحصول على التحديثات والدعم @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
+            "النسخة الويب من البوت: youtubemusicdownloader.life، إذا لم تعمل، فجرّب bit.ly/ytmusicload"
         ),
-        "choose_lang": "اختر اللغة:",
-        "not_subscribed": f"لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNEL} ثم المحاولة مرة أخرى.",
-        "checking": "جارٍ التحقق من الرابط...",
-        "not_youtube": "هذا الرابط غير مدعوم. يرجى إرسال رابط صحيح لـ YouTube أو SoundCloud.",
-        "choose_download_type": "اختر صيغة الصوت:",
+
+        "choose_lang": "Выберите язык / Choose language:",
+        "not_subscribed": f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова.",
+        "checking": "Проверяю ссылку...",
+        "not_youtube": "Это не поддерживаемая ссылка. Отправьте корректную ссылку на YouTube или SoundCloud.",
+        "choose_download_type": "Выберите формат аудио:",
         "audio_button_mp3": "🎵 MP3 (YouTube)",
         "audio_button_sc": "🎵 MP3 (SoundCloud)",
-        "downloading_audio": "جارٍ تحميل الصوت... يرجى الانتظار.",
-        "download_progress": "جارٍ التحميل: {percent} بسرعة {speed}، متبقٍ ~{eta}",
-        "too_big": f"الملف كبير جدًا (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). جرب فيديو أو مقطع آخر.",
-        "done_audio": "تم! تم إرسال الصوت.",
-        "error": "حدث خطأ ما. تحقق من الرابط أو حاول مرة أخرى!\n",
-        "error_private_video": "هذا فيديو خاص ولا يمكن تحميله.",
-        "error_video_unavailable": "الفيديو غير متوفر.",
-        "sending_file": "يتم إرسال الملف {index} من {total}...",
-        "cancel_button": "إلغاء",
-        "cancelling": "جارٍ إلغاء التحميل...",
-        "cancelled": "تم إلغاء التحميل.",
-        "download_in_progress": "هناك تحميل آخر قيد التنفيذ. يرجى الانتظار أو إلغاؤه.",
-        "already_cancelled_or_done": "تم إلغاء التحميل أو اكتماله بالفعل.",
-        "url_error_generic": "تعذر معالجة الرابط. تأكد أنه رابط صحيح لـ YouTube أو SoundCloud."
+        "downloading_audio": "Скачиваю аудио... Подождите.",
+        "download_progress": "Скачиваю: {percent} на скорости {speed}, осталось ~{eta}",
+        "too_big": f"Файл слишком большой (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Попробуйте другое видео или трек.",
+        "done_audio": "Готово! Аудио отправлено.",
+        "error": "Что-то пошло не так. Проверьте ссылку или попробуйте позже!\n",
+        "error_private_video": "Это приватное видео и не может быть скачано.",
+        "error_video_unavailable": "Видео недоступно.",
+        "sending_file": "Отправляю файл {index} из {total}...",
+        "cancel_button": "Отмена",
+        "cancelling": "Отменяю загрузку...",
+        "cancelled": "Загрузка отменена.",
+        "download_in_progress": "Другая загрузка уже в процессе. Пожалуйста, подождите или отмените её.",
+        "already_cancelled_or_done": "Загрузка уже отменена или завершена.",
+        "url_error_generic": "Не удалось обработать URL. Убедитесь, что это корректная ссылка на YouTube или SoundCloud.",
+        "search_prompt": (
+            "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрзится в формате MP3.\n"
+            "Введите /cancel для отмены поиска.\n"
+            "Введите /search для поиска музыки по названию (YouTube)."
+        ),
+        "searching": "Ищу музыку...",
+        "unsupported_url_in_search": "Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос.(Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)",
+        "no_results": "Ничего не найдено. Попробуйте другой запрос.",
+        "choose_track": "Выберите трек для скачивания MP3:",
+        "downloading_selected_track": "Скачиваю выбранный трек в MP3...",
+        "copyright_pre": "⚠️ تحذير! قد يكون المحتوى الذي توشك على تنزيله محميًا بحقوق النشر. استخدمه للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com لحذف المحتوى.",
+        "copyright_post": "⚠️ قد يكون هذا المحتوى محميًا بحقوق النشر. استخدمه للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com.",
+        "copyright_command": "⚠️ تحذير! جميع المواد التي يتم تنزيلها عبر هذا البوت قد تكون محمية بحقوق النشر. استخدمها للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com وسنقوم بحذف المحتوى.",
     }
 }
-    
 
-LANG_KEYBOARD = ReplyKeyboardMarkup(
-    [
-        ["Русский", "English"],
-        ["Español", "Azərbaycan dili"],
-        ["Türkçe", "Українська"],
-        ["العربية"]
-    ],
-    resize_keyboard=True,
-    one_time_keyboard=True
-)
-LANG_CODES = {
-    "Русский": "ru", "English": "en", "Español": "es",
-    "Azərbaycan dili": "az", "Türkçe": "tr", "Українська": "uk",
-    "العربية": "ar"
-}
+def get_user_lang(user_id):
+    return user_langs.get(user_id, "ru")
 
-SEARCH_RESULTS_LIMIT = 10 
-user_langs = {}
-USER_LANGS_FILE = "user_languages.json"
+def is_soundcloud_url(url):
+    return "soundcloud.com/" in url.lower()
 
 def load_user_langs():
     global user_langs
@@ -299,9 +296,6 @@ def load_user_langs():
 def save_user_langs():
     with open(USER_LANGS_FILE, 'w', encoding='utf-8') as f:
         json.dump(user_langs, f)
-
-def get_user_lang(user_id):
-    return user_langs.get(user_id, "ru")
 
 async def choose_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -329,9 +323,6 @@ async def check_subscription(user_id: int, bot) -> bool:
     except Exception:
         return False
 
-def is_soundcloud_url(url):
-    return "soundcloud.com/" in url.lower()
-
 def blocking_yt_dlp_download(ydl_opts, url_to_download):
     import yt_dlp.utils
     import logging
@@ -345,6 +336,22 @@ def blocking_yt_dlp_download(ydl_opts, url_to_download):
         raise Exception("Unsupported URL: {}".format(url_to_download))
     except Exception as e:
         raise
+
+async def ask_download_type(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    await update.message.reply_text(texts.get("copyright_pre"))
+    context.user_data[f'url_for_download_{user_id}'] = url
+    if is_soundcloud_url(url):
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(texts["audio_button_sc"], callback_data=f"dltype_audio_sc_{user_id}")]
+        ])
+    else:
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(texts["audio_button_mp3"], callback_data=f"dltype_audio_mp3_{user_id}")]
+        ])
+    await update.message.reply_text(texts["choose_download_type"], reply_markup=keyboard)
 
 async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str, texts: dict, user_id: int, download_type: str):
     if not update.message:
@@ -429,6 +436,7 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
                         chat_id=chat_id, audio=f_send, title=title_str,
                         filename=os.path.basename(file_to_send)
                     )
+                await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
             except Exception:
                 await context.bot.send_message(chat_id=chat_id, text=f"{texts['error']} (Ошибка отправки файла {os.path.basename(file_to_send)})")
         await update_status_message_async(texts["done_audio"], show_cancel_button=False)
@@ -454,40 +462,6 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
             shutil.rmtree(temp_dir, ignore_errors=True)
         if user_id in active_downloads:
             del active_downloads[user_id]
-
-async def ask_download_type(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
-    user_id = update.effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    context.user_data[f'url_for_download_{user_id}'] = url
-    if is_soundcloud_url(url):
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(texts["audio_button_sc"], callback_data=f"dltype_audio_sc_{user_id}")]
-        ])
-    else:
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(texts["audio_button_mp3"], callback_data=f"dltype_audio_mp3_{user_id}")]
-        ])
-    await update.message.reply_text(texts["choose_download_type"], reply_markup=keyboard)
-
-async def process_link_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    active_downloads = context.bot_data.setdefault('active_downloads', {})
-    if user_id in active_downloads and active_downloads[user_id].get('task') and not active_downloads[user_id]['task'].done():
-        await update.message.reply_text(texts["download_in_progress"])
-        return
-    is_subscribed = await check_subscription(user_id, context.bot)
-    if not is_subscribed:
-        await update.message.reply_text(texts["not_subscribed"])
-        return
-    url = update.message.text.strip()
-    url_lower = url.lower()
-    if not ("youtube.com/" in url_lower or "youtu.be/" in url_lower or "soundcloud.com/" in url_lower):
-        await update.message.reply_text(texts["not_youtube"])
-        return
-    await ask_download_type(update, context, url)
 
 async def select_download_type_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -534,8 +508,7 @@ async def search_youtube(query: str):
         'extract_flat': True,
         'nocheckcertificate': True,
         'default_search': None,
-        'noplaylist': True,
-        'dump_single_json': True,
+        'noplaylist': True
     }
     try:
         search_query = f"ytsearch10:{query}"
@@ -553,37 +526,45 @@ async def search_youtube(query: str):
         logger.error(f"Ошибка поиска на YouTube: {e}")
         return []
 
+def is_url(text):
+    text = text.lower().strip()
+    return (
+        text.startswith("http://") or text.startswith("https://")
+    ) and (
+        "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
+    )
+
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    await update.message.reply_text(
-        "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрзится в формате MP3.\n"
-        "Введите /cancel для отмены поиска.\n"
-        "Введите /search для поиска музыки по названию (YouTube).",
-    )
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    await update.message.reply_text(texts["search_prompt"])
     context.user_data[f'awaiting_search_query_{user_id}'] = True
 
 async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    query = update.message.text.strip()
-    await update.message.reply_text("Ищу музыку...")
-    results = await search_youtube(query)
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    query_text = update.message.text.strip()
+    await update.message.reply_text(texts["searching"])
+    results = await search_youtube(query_text)
     if results == 'unsupported_url':
-        await update.message.reply_text("Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос.(Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)")
+        await update.message.reply_text(texts["unsupported_url_in_search"])
         context.user_data.pop(f'awaiting_search_query_{user_id}', None)
         return
     if not isinstance(results, list):
         results = []
     if not results:
-        await update.message.reply_text("Ничего не найдено. Попробуйте другой запрос.")
+        await update.message.reply_text(texts["no_results"])
         context.user_data.pop(f'awaiting_search_query_{user_id}', None)
         return
     keyboard = []
     for idx, entry in enumerate(results):
-        title = entry.get('title', 'Без названия')
+        title = entry.get('title', texts["no_results"])
         video_id = entry.get('id')
         keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{video_id}")])
     await update.message.reply_text(
-        "Выберите трек для скачивания MP3:",
+        texts["choose_track"],
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
     context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
@@ -602,19 +583,15 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     if user_id != sel_user_id:
         await query.edit_message_text("Эта кнопка не для вас.")
         return
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
     url = f"https://youtu.be/{video_id}"
-    await query.edit_message_text("Скачиваю выбранный трек в MP3...", reply_markup=None)
-    task = asyncio.create_task(handle_download(query, context, url, LANGUAGES[get_user_lang(user_id)], user_id, "audio_mp3"))
+    await query.edit_message_text(texts["downloading_selected_track"], reply_markup=None)
+    task = asyncio.create_task(
+        handle_download(query, context, url, texts, user_id, "audio_mp3")
+    )
     active_downloads = context.bot_data.setdefault('active_downloads', {})
     active_downloads[user_id] = {'task': task}
-
-def is_url(text):
-    text = text.lower().strip()
-    return (
-        text.startswith("http://") or text.startswith("https://")
-    ) and (
-        "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
-    )
 
 async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -622,16 +599,13 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     texts = LANGUAGES[lang]
     text = update.message.text.strip()
     active_downloads = context.bot_data.setdefault('active_downloads', {})
-
     if user_id in active_downloads and active_downloads[user_id].get('task') and not active_downloads[user_id]['task'].done():
         await update.message.reply_text(texts["download_in_progress"])
         return
-
     is_subscribed = await check_subscription(user_id, context.bot)
     if not is_subscribed:
         await update.message.reply_text(texts["not_subscribed"])
         return
-
     if is_url(text):
         await ask_download_type(update, context, text)
     else:
@@ -657,6 +631,12 @@ async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT
     except Exception:
         pass
 
+async def copyright_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    await update.message.reply_text(texts.get("copyright_command"))
+
 def main():
     load_user_langs()
     app = Application.builder().token(TOKEN).build()
@@ -664,6 +644,7 @@ def main():
     app.add_handler(CommandHandler("language", choose_language))
     app.add_handler(CommandHandler("languages", choose_language))
     app.add_handler(CommandHandler("search", search_command))
+    app.add_handler(CommandHandler("copyright", copyright_command))
     app.add_handler(MessageHandler(filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"), set_language))
     app.add_handler(CallbackQueryHandler(select_download_type_callback, pattern="^dltype_"))
     app.add_handler(CallbackQueryHandler(search_select_callback, pattern="^searchsel_"))
@@ -676,7 +657,8 @@ def main():
         await app.bot.set_my_commands([
             BotCommand("start", "Запуск и выбор языка / Start and choose language"),
             BotCommand("languages", "Сменить язык / Change language"),
-            BotCommand("search", "Поиск музыки по названию (YouTube) / Search music by name (YouTube) (Localized only in russian)"),
+            BotCommand("search", "Поиск музыки по названию (YouTube) / Search music by name (YouTube)"),
+            BotCommand("copyright", "Правообладателям / Copyright info")
         ])
     app.post_init = set_commands
     app.run_polling()
