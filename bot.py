@@ -58,17 +58,7 @@ LANGUAGES = {
         "cancelled": "Загрузка отменена.",
         "download_in_progress": "Другая загрузка уже в процессе. Пожалуйста, подождите или отмените её.",
         "already_cancelled_or_done": "Загрузка уже отменена или завершена.",
-        "url_error_generic": "Не удалось обработать URL. Убедитесь, что это корректная ссылка на YouTube или SoundCloud.",
-        "search_prompt": (
-            "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрзится в формате MP3.\n"
-            "Введите /cancel для отмены поиска.\n"
-            "Введите /search для поиска музыки по названию (YouTube)."
-        ),
-        "searching": "Ищу музыку...",
-        "unsupported_url_in_search": "Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос.(Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)",
-        "no_results": "Ничего не найдено. Попробуйте другой запрос.",
-        "choose_track": "Выберите трек для скачивания MP3:",
-        "downloading_selected_track": "Скачиваю выбранный трек в MP3..."
+        "url_error_generic": "Не удалось обработать URL. Убедитесь, что это корректная ссылка на YouTube или SoundCloud."
     },
     "en": {
         "start": (
@@ -100,17 +90,7 @@ LANGUAGES = {
         "cancelled": "Download cancelled.",
         "download_in_progress": "Another download is already in progress. Please wait or cancel it.",
         "already_cancelled_or_done": "Download already cancelled or completed.",
-        "url_error_generic": "Failed to process URL. Make sure it's a valid YouTube or SoundCloud link.",
-        "search_prompt": (
-            "Enter the track name or artist. Then click on the music, it will download in MP3 format.\n"
-            "Enter /cancel to cancel the search.\n"
-            "Enter /search to search for music by name (YouTube)."
-        ),
-        "searching": "Searching for music...",
-        "unsupported_url_in_search": "The link is not supported. Please check the link or try another query. (Alternatively, if it didn't work, you can download a track from another artist or Remix)",
-        "no_results": "Nothing found. Try another query.",
-        "choose_track": "Select a track to download in MP3:",
-        "downloading_selected_track": "Downloading the selected track in MP3..."
+        "url_error_generic": "Failed to process URL. Make sure it's a valid YouTube or SoundCloud link."
     },
     "es": {
         "start": (
@@ -121,6 +101,10 @@ LANGUAGES = {
             "¡Disfruta!"
             "No olvides suscribirte al canal para actualizaciones y soporte @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
             "Versión web del bot: youtubemusicdownloader.life, si no funciona entonces bit.ly/ytmusicload"
+    
+
+            
+        
         ),
         "choose_lang": "Elige idioma:",
         "not_subscribed": f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL} y vuelve a intentarlo.",
@@ -142,17 +126,7 @@ LANGUAGES = {
         "cancelled": "Descarga cancelada.",
         "download_in_progress": "Otra descarga ya está en progreso. Por favor espera o cancélala.",
         "already_cancelled_or_done": "La descarga ya fue cancelada o completada.",
-        "url_error_generic": "No se pudo procesar la URL. Asegúrate de que sea un enlace válido de YouTube o SoundCloud.",
-        "search_prompt": (
-            "Ingrese el nombre de la pista o artista. Luego haga clic en la música, se descargará en formato MP3.\n"
-            "Ingrese /cancel para cancelar la búsqueda.\n"
-            "Ingrese /search para buscar música por nombre (YouTube)."
-        ),
-        "searching": "Buscando música...",
-        "unsupported_url_in_search": "El enlace no es compatible. Por favor, compruebe el enlace o pruebe con otra consulta. (Alternativamente, si no funcionó, puede descargar una pista de otro artista o un Remix)",
-        "no_results": "No se encontraron resultados. Intente con otra consulta.",
-        "choose_track": "Seleccione una pista para descargar en MP3:",
-        "downloading_selected_track": "Descargando la pista seleccionada en MP3..."
+        "url_error_generic": "No se pudo procesar la URL. Asegúrate de que sea un enlace válido de YouTube o SoundCloud."
     },
     "az": {
         "start": (
@@ -184,17 +158,7 @@ LANGUAGES = {
         "cancelled": "Yükləmə ləğv edildi.",
         "download_in_progress": "Başqa bir yükləmə artıq davam edir. Zəhmət olmasa, gözləyin və ya ləğv edin.",
         "already_cancelled_or_done": "Yükləmə artıq ləğv edilib və ya tamamlanıb.",
-        "url_error_generic": "URL işlənə bilmədi. Düzgün YouTube və ya SoundCloud linki olduğuna əmin olun.",
-        "search_prompt": (
-            "Mahni adını və ya ifaçını daxil edin. Sonra musiqini seçin, MP3 formatında yüklənəcək.\n"
-            "Axtarışı ləğv etmək üçün /cancel daxil edin.\n"
-            "Adı ilə musiqi axtarmaq üçün /search daxil edin (YouTube)."
-        ),
-        "searching": "Musiqi axtarılır...",
-        "unsupported_url_in_search": "Link dəstəklənmir. Zəhmət olmasa linki yoxlayın və ya başqa sorğu sınayın. (Alternativ olaraq, işləmədisə, başqa ifaçıdan və ya Remix mahnısı yükləyə bilərsiniz)",
-        "no_results": "Heç nə tapılmadı. Başqa sorğu sınayın.",
-        "choose_track": "MP3 olaraq yükləmək üçün bir mahni seçin:",
-        "downloading_selected_track": "Seçilmiş mahni MP3 olaraq yüklənir..."
+        "url_error_generic": "URL işlənə bilmədi. Düzgün YouTube və ya SoundCloud linki olduğuna əmin olun."
     },
     "tr": {
         "start": (
@@ -205,6 +169,7 @@ LANGUAGES = {
             "İyi eğlenceler!"
             "Botu kullanmak için kanala abone olmayı unutmayın @ytdlpdeveloper. artoflife2303.github.io/miniblog \n\n"
             "Web bot versiyonu: youtubemusicdownloader.life, eğer çalışmıyorsa hbit.ly/ytmusicload"
+            
         ),
         "choose_lang": "Dil seçin:",
         "not_subscribed": f"Botu kullanmak için lütfen {REQUIRED_CHANNEL} kanalına abone olun ve tekrar deneyin.",
@@ -226,17 +191,7 @@ LANGUAGES = {
         "cancelled": "İndirme iptal edildi.",
         "download_in_progress": "Başka bir indirme zaten devam ediyor. Lütfen bekleyin veya iptal edin.",
         "already_cancelled_or_done": "İndirme zaten iptal edildi veya tamamlandı.",
-        "url_error_generic": "URL işlenemedi. Geçerli bir YouTube veya SoundCloud bağlantısı olduğundan emin olun.",
-        "search_prompt": (
-            "Parça adı veya sanatçı adı girin. Ardından müziğe tıklayın, MP3 formatında indirilecektir.\n"
-            "Aramayı iptal etmek için /cancel yazın.\n"
-            "Müzik adıyla arama yapmak için /search yazın (YouTube)."
-        ),
-        "searching": "Müzik aranıyor...",
-        "unsupported_url_in_search": "Bağlantı desteklenmiyor. Lütfen bağlantıyı kontrol edin veya başka bir sorgu deneyin. (Alternatif olarak, işe yaramadıysa, başka bir sanatçıdan veya Remix bir parça indirebilirsiniz)",
-        "no_results": "Hiçbir sonuç bulunamadı. Başka bir sorgu deneyin.",
-        "choose_track": "MP3 olarak indirmek için bir parça seçin:",
-        "downloading_selected_track": "Seçilen parça MP3 olarak indiriliyor..."
+        "url_error_generic": "URL işlenemedi. Geçerli bir YouTube veya SoundCloud bağlantısı olduğundan emin olun."
     },
     "uk": {
         "start": (
@@ -247,6 +202,9 @@ LANGUAGES = {
             "Гарного користування!"
             "Не забудьте підписатися на канал для оновлень та підтримки @ytdlpdeveloper. artoflife2303.github.io/miniblog. \n"
             "Веб-версія бота: youtubemusicdownloader.life, якщо не працює, то bit.ly/ytmusicload"
+            
+            
+
         ),
         "choose_lang": "Оберіть мову:",
         "not_subscribed": f"Щоб користуватися ботом, підпишіться на канал {REQUIRED_CHANNEL} і спробуйте ще раз.",
@@ -268,17 +226,7 @@ LANGUAGES = {
         "cancelled": "Завантаження скасовано.",
         "download_in_progress": "Інше завантаження вже триває. Будь ласка, зачекайте або скасуйте його.",
         "already_cancelled_or_done": "Завантаження вже скасовано або завершено.",
-        "url_error_generic": "Не вдалося обробити URL. Переконайтеся, що це коректне посилання на YouTube або SoundCloud.",
-        "search_prompt": (
-            "Введіть назву треку або виконавця. Потім натисніть на музику, вона завантажиться у форматі MP3.\n"
-            "Введіть /cancel, щоб скасувати пошук.\n"
-            "Введіть /search, щоб шукати музику за назвою (YouTube)."
-        ),
-        "searching": "Шукаю музику...",
-        "unsupported_url_in_search": "Посилання не підтримується. Будь ласка, перевірте посилання або спробуйте інший запит. (Якщо не вийшло, ви можете завантажити трек іншого виконавця або ремікс)",
-        "no_results": "Нічого не знайдено. Спробуйте інший запит.",
-        "choose_track": "Виберіть трек для завантаження у форматі MP3:",
-        "downloading_selected_track": "Завантажую вибраний трек у форматі MP3..."
+        "url_error_generic": "Не вдалося обробити URL. Переконайтеся, що це коректне посилання на YouTube або SoundCloud."
     },
     "ar": {
         "start": (
@@ -289,6 +237,7 @@ LANGUAGES = {
             "استخدام ممتع!"
             "لا تنس الاشتراك في القناة للحصول على التحديثات والدعم @ytdlpdeveloper. artoflife2303.github.io/miniblog"
             "النسخة الويب من البوت: youtubemusicdownloader.life، إذا لم تعمل فجرّب bit.ly/ytmusicload"
+            
         ),
         "choose_lang": "اختر اللغة:",
         "not_subscribed": f"لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNEL} ثم المحاولة مرة أخرى.",
@@ -310,17 +259,7 @@ LANGUAGES = {
         "cancelled": "تم إلغاء التحميل.",
         "download_in_progress": "هناك تحميل آخر قيد التنفيذ. يرجى الانتظار أو إلغاؤه.",
         "already_cancelled_or_done": "تم إلغاء التحميل أو اكتماله بالفعل.",
-        "url_error_generic": "تعذر معالجة الرابط. تأكد أنه رابط صحيح لـ YouTube أو SoundCloud.",
-        "search_prompt": (
-            "أدخل اسم المسار أو الفنان. ثم انقر فوق الموسيقى، سيتم تنزيلها بتنسيق MP3.\n"
-            "أدخل /cancel لإلغاء البحث.\n"
-            "أدخل /search للبحث عن الموسيقى بالاسم (YouTube)."
-        ),
-        "searching": "جارٍ البحث عن الموسيقى...",
-        "unsupported_url_in_search": "الرابط غير مدعوم. يرجى التحقق من الرابط أو تجربة استعلام آخر. (بديلاً، إذا لم ينجح الأمر، يمكنك تنزيل مقطع من فنان آخر أو ريمكس)",
-        "no_results": "لم يتم العثور على نتائج. جرب استعلام آخر.",
-        "choose_track": "حدد مسارًا لتنزيله بتنسيق MP3:",
-        "downloading_selected_track": "جارٍ تنزيل المسار المحدد بتنسيق MP3..."
+        "url_error_generic": "تعذر معالجة الرابط. تأكد أنه رابط صحيح لـ YouTube أو SoundCloud."
     }
 }
     
@@ -616,43 +555,37 @@ async def search_youtube(query: str):
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    await update.message.reply_text(texts["search_prompt"])
+    await update.message.reply_text(
+        "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрзится в формате MP3.\n"
+        "Введите /cancel для отмены поиска.\n"
+        "Введите /search для поиска музыки по названию (YouTube).",
+    )
     context.user_data[f'awaiting_search_query_{user_id}'] = True
 
 async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    query_text = update.message.text.strip()
-    
-    await update.message.reply_text(texts["searching"])
-    results = await search_youtube(query_text)
-    
+    query = update.message.text.strip()
+    await update.message.reply_text("Ищу музыку...")
+    results = await search_youtube(query)
     if results == 'unsupported_url':
-        await update.message.reply_text(texts["unsupported_url_in_search"])
+        await update.message.reply_text("Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос.(Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)")
         context.user_data.pop(f'awaiting_search_query_{user_id}', None)
         return
-    
     if not isinstance(results, list):
         results = []
-    
     if not results:
-        await update.message.reply_text(texts["no_results"])
+        await update.message.reply_text("Ничего не найдено. Попробуйте другой запрос.")
         context.user_data.pop(f'awaiting_search_query_{user_id}', None)
         return
-    
     keyboard = []
     for idx, entry in enumerate(results):
-        title = entry.get('title', texts["no_results"])
+        title = entry.get('title', 'Без названия')
         video_id = entry.get('id')
         keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{video_id}")])
-    
     await update.message.reply_text(
-        texts["choose_track"],
+        "Выберите трек для скачивания MP3:",
         reply_markup=InlineKeyboardMarkup(keyboard)
-    
+    )
     context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
     context.user_data.pop(f'awaiting_search_query_{user_id}', None)
 
@@ -666,20 +599,12 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     except Exception:
         await query.edit_message_text("Ошибка выбора трека.")
         return
-    
     if user_id != sel_user_id:
         await query.edit_message_text("Эта кнопка не для вас.")
         return
-    
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    
     url = f"https://youtu.be/{video_id}"
-    await query.edit_message_text(texts["downloading_selected_track"], reply_markup=None)
-    
-    task = asyncio.create_task(
-        handle_download(query, context, url, texts, user_id, "audio_mp3")
-    )
+    await query.edit_message_text("Скачиваю выбранный трек в MP3...", reply_markup=None)
+    task = asyncio.create_task(handle_download(query, context, url, LANGUAGES[get_user_lang(user_id)], user_id, "audio_mp3"))
     active_downloads = context.bot_data.setdefault('active_downloads', {})
     active_downloads[user_id] = {'task': task}
 
@@ -751,7 +676,7 @@ def main():
         await app.bot.set_my_commands([
             BotCommand("start", "Запуск и выбор языка / Start and choose language"),
             BotCommand("languages", "Сменить язык / Change language"),
-            BotCommand("search", "Поиск музыки по названию (YouTube) / Search music by name (YouTube)"),
+            BotCommand("search", "Поиск музыки по названию (YouTube) / Search music by name (YouTube) (Localized only in russian)"),
         ])
     app.post_init = set_commands
     app.run_polling()
