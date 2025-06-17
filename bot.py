@@ -9,15 +9,19 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from dotenv import load_dotenv
 import yt_dlp
 
+# Загрузка переменных окружения из .env файла
 load_dotenv()
 
+# Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Получение токена бота из переменных окружения
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
     raise ValueError("Cant found TELEGRAM_BOT_TOKEN in environment variables.")
 
+# Пути к файлам и переменные
 cookies_path = os.getenv('COOKIES_PATH', 'youtube.com_cookies.txt')
 ffmpeg_path_from_env = os.getenv('FFMPEG_PATH')
 ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'
@@ -27,6 +31,7 @@ TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024
 TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ"
 
 USER_LANGS_FILE = "user_languages.json"
+# Клавиатура для выбора языка
 LANG_KEYBOARD = ReplyKeyboardMarkup(
     [
         ["Русский", "English"],
@@ -37,15 +42,17 @@ LANG_KEYBOARD = ReplyKeyboardMarkup(
     resize_keyboard=True,
     one_time_keyboard=True
 )
+# Сопоставление названий языков с кодами
 LANG_CODES = {
     "Русский": "ru", "English": "en", "Español": "es",
     "Azərbaycan dili": "az", "Türkçe": "tr", "Українська": "uk",
     "العربية": "ar"
 }
 
-SEARCH_RESULTS_LIMIT = 10
-user_langs = {}
+SEARCH_RESULTS_LIMIT = 10 # Лимит результатов поиска
+user_langs = {} # Словарь для хранения языковых предпочтений пользователей
 
+# Словари с локализованными текстами
 LANGUAGES = {
     "ru": {
         "start": (
@@ -224,7 +231,7 @@ LANGUAGES = {
         "choose_track": "MP3 olarak indirmek için bir parça seçin:",
         "downloading_selected_track": "Seçilen parça MP3 olarak indiriliyor...",
         "copyright_pre": "⚠️ Dikkat! İndirmek üzere olduğunuz materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın.",
-        "copyright_post": "⚠️ Bu materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail.com adresine yazın.",
+        "copyright_post": "⚠️ Bu materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail0.com adresine yazın.",
         "copyright_command": "⚠️ Dikkat! Bu bot üzerinden indirilen tüm materyaller telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail.com adresine yazın, ilgili içeriği kaldıracağız."
     },
     "ar": {
@@ -320,15 +327,27 @@ LANGUAGES = {
 }
 
 def get_user_lang(user_id):
+    """
+    Определяет язык пользователя по его ID. Если язык не найден, используется русский.
+    Determines the user's language by their ID. If no language is found, Russian is used.
+    """
     lang = user_langs.get(user_id)
     if lang in LANGUAGES:
         return lang
     return "ru"
 
 def is_soundcloud_url(url):
+    """
+    Проверяет, является ли URL ссылкой на SoundCloud.
+    Checks if the URL is a SoundCloud link.
+    """
     return "soundcloud.com/" in url.lower()
 
 def load_user_langs():
+    """
+    Загружает языковые предпочтения пользователей из файла.
+    Loads user language preferences from a file.
+    """
     global user_langs
     if os.path.exists(USER_LANGS_FILE):
         with open(USER_LANGS_FILE, 'r', encoding='utf-8') as f:
@@ -341,6 +360,10 @@ def load_user_langs():
         user_langs = {}
 
 def save_user_langs():
+    """
+    Сохраняет языковые предпочтения пользователей в файл.
+    Saves user language preferences to a file.
+    """
     with open(USER_LANGS_FILE, 'w', encoding='utf-8') as f:
         json.dump(user_langs, f)
 
@@ -349,6 +372,7 @@ async def choose_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Отправляет пользователю клавиатуру для выбора языка.
     Sends the user a keyboard to choose a language.
     """
+    logger.info(f"User {update.effective_user.id} requested language choice.")
     await update.message.reply_text(
         LANGUAGES["ru"]["choose_lang"], # Использование русского текста по умолчанию для выбора языка.
         reply_markup=LANG_KEYBOARD
@@ -365,8 +389,10 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if lang_code:
         user_langs[user_id] = lang_code
         save_user_langs()
+        logger.info(f"User {user_id} set language to {lang_code}.")
         await update.message.reply_text(LANGUAGES[lang_code]["start"])
     else:
+        logger.warning(f"User {user_id} sent invalid language: {lang_name}.")
         await update.message.reply_text(
             "Пожалуйста, выберите язык с клавиатуры / Please choose a language from the keyboard."
         )
@@ -379,7 +405,8 @@ async def check_subscription(user_id: int, bot) -> bool:
     try:
         member = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
         return member.status in ("member", "administrator", "creator")
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error checking subscription for user {user_id}: {e}")
         return False
 
 def blocking_yt_dlp_download(ydl_opts, url_to_download):
@@ -398,6 +425,7 @@ def blocking_yt_dlp_download(ydl_opts, url_to_download):
     except yt_dlp.utils.UnsupportedError:
         raise Exception("Unsupported URL: {}".format(url_to_download))
     except Exception as e:
+        logger.error(f"yt-dlp download error: {e}")
         raise # Повторный выброс всех остальных исключений
 
 async def ask_download_type(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
@@ -451,7 +479,8 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
             try:
                 current_keyboard = cancel_keyboard if show_cancel_button else None
                 await status_message.edit_text(text_to_update, reply_markup=current_keyboard)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Could not edit status message: {e}") # Отладочное сообщение
                 pass # Игнорируем ошибки при редактировании сообщения.
 
     def progress_hook(d):
@@ -491,13 +520,14 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
         # Удаляем None значения из ydl_opts, чтобы избежать ошибок.
         ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
 
+        logger.info(f"Starting download for {url} by user {user_id}")
         try:
             await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url)
         except Exception as e:
             if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
                 await update_status_message_async("Ссылка не поддерживается. Пожалуйста, проверьте правильность ссылки или попробуйте другой запрос.", show_cancel_button=False)
                 return
-            logger.error(f"Ошибка при скачивании: {e}")
+            logger.error(f"Error during yt-dlp download for {url}: {e}")
             raise # Повторный выброс исключения после логирования.
 
         downloaded_files_info = []
@@ -530,13 +560,16 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
                     )
                 # Отправка сообщения об авторских правах после загрузки каждого файла
                 await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
-            except Exception:
+                logger.info(f"Successfully sent audio for {url} to user {user_id}")
+            except Exception as e:
+                logger.error(f"Error sending audio file {os.path.basename(file_to_send)} to user {user_id}: {e}")
                 await context.bot.send_message(chat_id=chat_id, text=f"{texts['error']} (Ошибка отправки файла {os.path.basename(file_to_send)})")
 
         await update_status_message_async(texts["done_audio"], show_cancel_button=False)
 
     except asyncio.CancelledError:
         # Обработка отмены загрузки.
+        logger.info(f"Download cancelled for user {user_id}.")
         if status_message:
             await update_status_message_async(texts["cancelled"], show_cancel_button=False)
         else:
@@ -549,7 +582,7 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
             else:
                 await context.bot.send_message(chat_id=chat_id, text="Ссылка не поддерживается. Пожалуйста, проверьте правильность ссылки или попробуйте другой запрос.")
             return
-        logger.error(f"Ошибка при скачивании: {e}")
+        logger.critical(f"Unhandled error in handle_download for user {user_id}: {e}", exc_info=True) # Использование critical для неперехваченных ошибок
         if status_message:
             await update_status_message_async(texts["error"] + str(e), show_cancel_button=False)
         else:
@@ -558,8 +591,10 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
         # Очистка временных файлов и снятие статуса активной загрузки.
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir, ignore_errors=True)
+            logger.info(f"Cleaned up temporary directory {temp_dir} for user {user_id}.")
         if user_id in active_downloads:
             del active_downloads[user_id]
+            logger.info(f"Removed active download for user {user_id}.")
 
 async def select_download_type_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -568,6 +603,8 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
     """
     query = update.callback_query
     await query.answer() # Отправляем ответ на CallbackQuery, чтобы убрать "часики" с кнопки.
+    user_id = query.from_user.id
+    logger.info(f"User {user_id} selected download type: {query.data}")
     try:
         parts = query.data.split("_")
         if len(parts) != 4 or parts[0] != "dltype" or (parts[1] != "audio"):
@@ -582,12 +619,14 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
         else:
             raise ValueError("Неизвестный тип загрузки")
 
-    except (IndexError, ValueError):
+    except (IndexError, ValueError) as e:
+        logger.error(f"Error parsing callback_data for user {user_id}: {e} - Data: {query.data}")
         await query.edit_message_text("Ошибка выбора. Попробуйте снова отправить ссылку.")
         return
 
     requesting_user_id = query.from_user.id
     if user_id_from_callback != requesting_user_id:
+        logger.warning(f"User {requesting_user_id} tried to use another user's callback: {user_id_from_callback}")
         await query.edit_message_text("Эта кнопка не для вас.")
         return
 
@@ -597,12 +636,14 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
     # Извлечение URL для загрузки из user_data.
     url_to_download = context.user_data.pop(f'url_for_download_{requesting_user_id}', None)
     if not url_to_download:
+        logger.error(f"URL not found in user_data for user {requesting_user_id}")
         await query.edit_message_text(texts["error"] + " (URL не найден, попробуйте снова)")
         return
 
     try:
         await query.edit_message_reply_markup(reply_markup=None) # Удаление клавиатуры после выбора.
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Could not remove reply markup: {e}")
         pass # Игнорируем ошибки, если клавиатура уже удалена.
 
     # Запуск загрузки в фоновом режиме.
@@ -629,18 +670,22 @@ async def search_youtube(query: str):
     try:
         # Поиск по 10 лучшим результатам.
         search_query = f"ytsearch{SEARCH_RESULTS_LIMIT}:{query}"
+        logger.info(f"Searching YouTube for query: {query}")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(search_query, download=False)
             entries = info.get('entries', [])
             if entries is None:
+                logger.info(f"No entries found for YouTube search: {query}")
                 return [] # Возвращаем пустой список, если entries равно None.
             return entries[:SEARCH_RESULTS_LIMIT]
     except yt_dlp.utils.DownloadError as e:
         if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
+            logger.warning(f"Unsupported URL in search query: {query}")
             return 'unsupported_url'
+        logger.error(f"DownloadError during YouTube search for {query}: {e}")
         return []
     except Exception as e:
-        logger.error(f"Ошибка поиска на YouTube: {e}")
+        logger.critical(f"Unhandled error during YouTube search for {query}: {e}", exc_info=True)
         return []
 
 def is_url(text):
@@ -663,6 +708,7 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
+    logger.info(f"User {user_id} issued /search command.")
     await update.message.reply_text(texts["search_prompt"])
     context.user_data[f'awaiting_search_query_{user_id}'] = True
 
@@ -675,6 +721,7 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
     query_text = update.message.text.strip()
+    logger.info(f"User {user_id} sent search query: '{query_text}'")
 
     await update.message.reply_text(texts["searching"])
     results = await search_youtube(query_text)
@@ -705,6 +752,7 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     # Сохраняем результаты поиска для последующего выбора.
     context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
     context.user_data.pop(f'awaiting_search_query_{user_id}', None) # Сбрасываем флаг ожидания запроса.
+    logger.info(f"User {user_id} received {len(results)} search results.")
 
 async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -714,15 +762,18 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer() # Отправляем ответ на CallbackQuery, чтобы убрать "часики" с кнопки.
     user_id = query.from_user.id
+    logger.info(f"User {user_id} selected track from search: {query.data}")
 
     try:
         _, sel_user_id, video_id = query.data.split("_", 2)
         sel_user_id = int(sel_user_id)
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error parsing search select callback data for user {user_id}: {e} - Data: {query.data}")
         await query.edit_message_text("Ошибка выбора трека.")
         return
 
     if user_id != sel_user_id:
+        logger.warning(f"User {user_id} tried to use another user's search select callback: {sel_user_id}")
         await query.edit_message_text("Эта кнопка не для вас.")
         return
 
@@ -748,6 +799,7 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
     text = update.message.text.strip()
+    logger.info(f"User {user_id} sent message: '{text}'")
 
     active_downloads = context.bot_data.setdefault('active_downloads', {})
     if user_id in active_downloads and active_downloads[user_id].get('task') and not active_downloads[user_id]['task'].done():
@@ -763,8 +815,14 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     if is_url(text):
         await ask_download_type(update, context, text)
     else:
-        # Если это не URL и бот ожидает поисковый запрос.
-        await handle_search_query(update, context)
+        # Если это не URL и бот ожидает поисковый запрос (например, после /search).
+        # Проверяем, ожидает ли бот поисковый запрос от этого пользователя.
+        if context.user_data.get(f'awaiting_search_query_{user_id}'):
+            await handle_search_query(update, context)
+        else:
+            # Если это не URL и бот не ожидает поисковый запрос, это может быть некорректный ввод.
+            await update.message.reply_text(texts["url_error_generic"]) # Или другое сообщение об ошибке/подсказке.
+
 
 async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -776,6 +834,7 @@ async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT
     user_id = query.from_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
+    logger.info(f"User {user_id} requested download cancellation.")
 
     active_downloads = context.bot_data.setdefault('active_downloads', {})
     download = active_downloads.get(user_id)
@@ -783,15 +842,19 @@ async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT
     if not download or not download.get('task') or download['task'].done():
         try:
             await query.edit_message_text(texts["already_cancelled_or_done"])
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Could not edit message for already cancelled/done download: {e}")
             pass # Игнорируем ошибку, если сообщение не может быть отредактировано (например, уже изменено).
         return
 
     download['task'].cancel() # Отменяем активную задачу загрузки.
     try:
         await query.edit_message_text(texts["cancelling"])
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Could not edit message to 'cancelling': {e}")
         pass # Игнорируем ошибку, если сообщение не может быть отредактировано.
+    logger.info(f"Download task cancelled for user {user_id}.")
+
 
 async def copyright_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -801,6 +864,7 @@ async def copyright_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
+    logger.info(f"User {user_id} issued /copyright command.")
     await update.message.reply_text(texts["copyright_command"])
 
 def main():
@@ -809,7 +873,14 @@ def main():
     Main function to run the bot.
     """
     load_user_langs() # Загрузка пользовательских языков при запуске.
-    app = Application.builder().token(TOKEN).build()
+    
+    try:
+        app = Application.builder().token(TOKEN).build()
+        logger.info("Bot application built successfully.")
+    except Exception as e:
+        logger.critical(f"Failed to build bot application: {e}", exc_info=True)
+        # Если здесь произошла ошибка, это критично и нужно остановить выполнение.
+        raise
 
     # Добавление обработчиков команд.
     app.add_handler(CommandHandler("start", start))
@@ -834,23 +905,32 @@ def main():
 
     async def set_commands(_):
         """
-        Устанавливает команды для бота в Telegram.
-        Sets the bot commands in Telegram.
+        Устанавливает команды для бота в Telegram. Эти команды отображаются в меню Telegram.
+        Sets the bot commands in Telegram. These commands are displayed in the Telegram menu.
         """
+        logger.info("Setting bot commands.")
         await app.bot.set_my_commands([
             BotCommand("start", "Запуск и выбор языка / Start and choose language"),
             BotCommand("languages", "Сменить язык / Change language"),
-            BotCommand("search", "Поиск музыки по названию (YouTube) / Search music by name (YouTube)"),
-            BotCommand("copyright", "Правообладателям / Copyright info") # Обновлено описание для команды /copyright.
+            BotCommand("search", "Поиск музыки (YouTube/SoundCloud) / Search music (YouTube/SoundCloud)"), # Более универсальное описание
+            BotCommand("copyright", "Информация об авторских правах / Copyright info") # Более четкое описание
         ])
     app.post_init = set_commands # Выполнение set_commands после инициализации приложения.
-    app.run_polling() # Запуск бота.
+    
+    logger.info("Starting bot polling.")
+    try:
+        app.run_polling() # Запуск бота.
+    except Exception as e:
+        logger.critical(f"Bot polling failed: {e}", exc_info=True)
+        # В случае сбоя при поллинге, можно добавить логику для уведомления администратора или перезапуска.
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Обрабатывает команду /start: предлагает выбрать язык.
     Handles the /start command: prompts to choose a language.
     """
+    logger.info(f"User {update.effective_user.id} issued /start command.")
     await choose_language(update, context)
 
 if __name__ == '__main__':
