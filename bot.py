@@ -1,4 +1,3 @@
-
 import os
 import logging
 import asyncio
@@ -231,9 +230,9 @@ LANGUAGES = {
         "no_results": "Hiçbir sonuç bulunamadı. Başka bir sorgu deneyin.",
         "choose_track": "MP3 olarak indirmek için bir parça seçin:",
         "downloading_selected_track": "Seçilen parça MP3 olarak indiriliyor...",
-        "copyright_pre": "⚠️ Dikkat! İndirmek üzere olduğunuz materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın.",
-        "copyright_post": "⚠️ Bu materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail.com adresine yazın.",
-        "copyright_command": "⚠️ Dikkat! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsünüzsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
+        "copyright_pre": "⚠️ Dikkat! İndirmek üzrə olduğunuz materyal telif haqqı ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_post": "⚠️ Bu materyal telif haqqı ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_command": "⚠️ Dikkat! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
     },
     "ar": {
         "start": (
@@ -312,7 +311,7 @@ LANGUAGES = {
         "already_cancelled_or_done": "Yükləmə artıq ləğv edilib və ya tamamlanıb.",
         "url_error_generic": "URL emal edilə bilmədi. Etibarlı bir YouTube və ya SoundCloud linki olduğundan əmin olun.",
         "search_prompt": (
-            "Trek adı və ya ifaçı adı daxil edin. Sonra musiqiyə klikləyin, MP3 formatında yüklənəcək.\n"
+            "Trek adı və ya ifaçı adı daxil edin. Sonra musiqiyə tıklayın, MP3 formatında yüklənəcək.\n"
             "/cancel daxil edərək axtarışı ləğv edin.\n"
             "/search daxil edərək adla musiqi axtarın (YouTube)."
         ),
@@ -321,9 +320,9 @@ LANGUAGES = {
         "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
         "choose_track": "MP3 olaraq yükləmək üçün bir trek seçin:",
         "downloading_selected_track": "Seçilən trek MP3 olaraq yüklənir...",
-        "copyright_pre": "⚠️ Diqqət! Yüklədiyiniz material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsünüzsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
-        "copyright_post": "⚠️ Bu material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsünüzsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
-        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsünüzsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
+        "copyright_pre": "⚠️ Diqqət! Yüklədiyiniz material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_post": "⚠️ Bu material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
     }
 }
 
@@ -821,9 +820,27 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
         if context.user_data.get(f'awaiting_search_query_{user_id}'):
             await handle_search_query(update, context)
         else:
-            # Если это не URL и бот не ожидает поисковый запрос, это может быть некорректный ввод.
-            await update.message.reply_text(texts["url_error_generic"]) # Или другое сообщение об ошибке/подсказке.
-
+            # Если пользователь просто написал слово (например, Timeless), автоматически выполняем поиск музыки.
+            if len(text.split()) <= 5 and text.isascii():
+                # Автоматический поиск по коротким текстам (до 5 слов, латиница)
+                logger.info(f"User {user_id} auto-search for: '{text}'")
+                await update.message.reply_text(texts["searching"])
+                results = await search_youtube(text)
+                if not results or results == 'unsupported_url':
+                    await update.message.reply_text(texts["no_results"])
+                    return
+                keyboard = []
+                for idx, entry in enumerate(results):
+                    title = entry.get('title', texts["no_results"])
+                    video_id = entry.get('id')
+                    keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{video_id}")])
+                await update.message.reply_text(
+                    texts["choose_track"],
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+                context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
+            else:
+                await update.message.reply_text(texts["url_error_generic"])
 
 async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
