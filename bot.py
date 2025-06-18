@@ -231,8 +231,8 @@ LANGUAGES = {
         "choose_track": "MP3 olarak indirmek için bir parça seçin:",
         "downloading_selected_track": "Seçilen parça MP3 olarak indiriliyor...",
         "copyright_pre": "⚠️ Dikkat! İndirmek üzere olduğunuz materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın.",
-        "copyright_post": "⚠️ Bu materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail0.com adresine yazın.",
-        "copyright_command": "⚠️ Dikkat! Bu bot üzerinden indirilen tüm materyaller telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail.com adresine yazın, ilgili içeriği kaldıracağız."
+        "copyright_post": "⚠️ Bu materyal telif hakkı ile korunuyor olabilir. Yalnızca kişisel kullanım için kullanın. Eğer bir hak sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail.com adresine yazın.",
+        "copyright_command": "⚠️ Dikkat! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsünüzsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
     },
     "ar": {
         "start": (
@@ -292,7 +292,7 @@ LANGUAGES = {
         "choose_lang": "Dil seçin:",
         "not_subscribed": f"Botdan istifadə etmək üçün zəhmət olmasa {REQUIRED_CHANNEL} kanalına abunə olun və yenidən cəhd edin.",
         "checking": "Link yoxlanılır...",
-        "not_youtube": "Bu dəstəklənməyən bir linkdir. Zəhmət olmasa, etibarlı bir YouTube və ya SoundCloud linki göndərin.",
+        "not_youtube": "Bu dəstəklənməyən bir bağlantıdır. Zəhmət olmasa, etibarlı bir YouTube və ya SoundCloud linki göndərin.",
         "choose_download_type": "Səs formatını seçin:",
         "audio_button_mp3": "🎵 MP3 (YouTube)",
         "audio_button_sc": "🎵 MP3 (SoundCloud)",
@@ -316,7 +316,7 @@ LANGUAGES = {
             "/search daxil edərək adla musiqi axtarın (YouTube)."
         ),
         "searching": "Musiqi axtarılır...",
-        "unsupported_url_in_search": "Link dəstəklənmir. Zəhmət olmasa, linki yoxlayın və ya başqa sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
+        "unsupported_url_in_search": "Link dəstəklənmir. Zəhmət olmasa, linki yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
         "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
         "choose_track": "MP3 olaraq yükləmək üçün bir trek seçin:",
         "downloading_selected_track": "Seçilən trek MP3 olaraq yüklənir...",
@@ -449,12 +449,12 @@ async def ask_download_type(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         ])
     await update.message.reply_text(texts["choose_download_type"], reply_markup=keyboard)
 
-async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str, texts: dict, user_id: int, download_type: str):
+async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, url: str, texts: dict, user_id: int, download_type: str):
     """
     Обрабатывает загрузку аудиофайла с YouTube или SoundCloud.
     Handles the download of an audio file from YouTube or SoundCloud.
     """
-    if not update.message:
+    if not update_or_query.message:
         try:
             # Отправка сообщения об ошибке, если chat_id не найден.
             await context.bot.send_message(chat_id=user_id, text=texts["error"] + " (внутренняя ошибка: не найден чат для ответа)")
@@ -462,7 +462,7 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE, ur
             pass # Игнорируем ошибку, если сообщение не может быть отправлено.
         return
 
-    chat_id = update.message.chat_id
+    chat_id = update_or_query.message.chat_id
     temp_dir = None
     status_message = None
     active_downloads = context.bot_data.setdefault('active_downloads', {})
@@ -922,16 +922,19 @@ def main():
         app.run_polling() # Запуск бота.
     except Exception as e:
         logger.critical(f"Bot polling failed: {e}", exc_info=True)
-        # В случае сбоя при поллинге, можно добавить логику для уведомления администратора или перезапуска.
-
+        
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Обрабатывает команду /start: предлагает выбрать язык.
-    Handles the /start command: prompts to choose a language.
+    Обрабатывает команду /start: предлагает выбрать язык и отправляет предупреждение об авторских правах.
+    Handles the /start command: prompts to choose a language and sends copyright warning.
     """
     logger.info(f"User {update.effective_user.id} issued /start command.")
     await choose_language(update, context)
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    await update.message.reply_text(texts["copyright_post"])
 
 if __name__ == '__main__':
     main()
