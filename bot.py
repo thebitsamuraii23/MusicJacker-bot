@@ -156,12 +156,30 @@ user_last_search_time = {}
 
 # Dictionaries with localized texts
 LANGUAGES = {
-    "ru": {},  # Russian messages here
-    "en": {},  # English messages here
-    "es": {},  # Spanish messages here
-    "tr": {},  # Turkish messages here
-    "ar": {},  # Arabic messages here
-    "az": {},  # Azerbaijani messages here
+    "ru": {
+        "choose_lang": "Выберите язык / Choose language:",
+        "searching": "Ищу музыку..."
+    },
+    "en": {
+        "choose_lang": "Choose language:",
+        "searching": "Searching for music..."
+    },
+    "es": {
+        "choose_lang": "Elige idioma:",
+        "searching": "Buscando música..."
+    },
+    "tr": {
+        "choose_lang": "Dil seçin:",
+        "searching": "Müzik aranıyor..."
+    },
+    "ar": {
+        "choose_lang": "اختر اللغة:",
+        "searching": "جاري البحث عن الموسيقى..."
+    },
+    "az": {
+        "choose_lang": "Dil seçin:",
+        "searching": "Musiqi axtarılır..."
+    },
 }
 
 def get_user_lang(user_id):
