@@ -565,19 +565,9 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         return
 
     chat_id = update_or_query.message.chat_id
-    # Для каждого пользователя — отдельная временная папка
     temp_dir = None
     status_message = None
     active_downloads = context.bot_data.setdefault('active_downloads', {})
-    # Ограничение: только один активный download на пользователя
-    if user_id in active_downloads:
-        try:
-            await context.bot.send_message(chat_id=update_or_query.effective_chat.id,
-                                           text=texts.get("download_in_progress", "Другая загрузка уже в процессе. Пожалуйста, подождите или отмените её."))
-        except Exception:
-            pass
-        return
-    active_downloads[user_id] = True
     loop = asyncio.get_running_loop()
     cancel_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(texts["cancel_button"], callback_data=f"cancel_{user_id}")]])
 
@@ -622,8 +612,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         # Сохраняем время начала скачивания (чтобы не было параллельных попыток)
         user_last_download_time[user_id] = now
         status_message = await context.bot.send_message(chat_id=chat_id, text=texts["downloading_audio"], reply_markup=cancel_keyboard)
-        # Создаём уникальную временную папку для каждого пользователя
-        temp_dir = tempfile.mkdtemp(prefix=f"ytmusic_{user_id}_")
+        temp_dir = tempfile.mkdtemp()
         ydl_opts = {
             'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
             'format': 'bestaudio/best',
@@ -661,16 +650,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         for file_name in all_temp_files:
             file_path = os.path.join(temp_dir, file_name)
             file_ext_lower = os.path.splitext(file_name)[1].lower()
-            # Удаляем все суффиксы типа ' - Made by ... [id]' из названия
-            base_title = file_name
-            # Удалить суффикс ' - Made by ... [id]' если есть
-            if ' - Made by ' in base_title:
-                base_title = base_title.split(' - Made by ')[0]
-            # Удалить суффикс ' [id]' если есть
-            if ' [' in base_title:
-                base_title = base_title.split(' [')[0]
-            # Удалить расширение
-            base_title = os.path.splitext(base_title)[0]
+            base_title = os.path.splitext(file_name.split(" [")[0])[0] # Extract title from file name.
             if file_ext_lower in [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]:
                 downloaded_files_info.append((file_path, base_title))
 
@@ -679,7 +659,6 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             return
 
         total_files = len(downloaded_files_info)
-
         for i, (file_to_send, title_str) in enumerate(downloaded_files_info):
             await update_status_message_async(texts["sending_file"].format(index=i+1, total=total_files))
             file_size = os.path.getsize(file_to_send)
@@ -688,13 +667,10 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                 await context.bot.send_message(chat_id=chat_id, text=f"{texts['too_big']} ({os.path.basename(file_to_send)})")
                 continue
 
-            # Добавляем суффикс с именем разработчика
-            title_with_dev = f"{title_str} (Developed by BitSamurai)"
-
             try:
                 with open(file_to_send, 'rb') as f_send:
                     await context.bot.send_audio(
-                        chat_id=chat_id, audio=f_send, title=title_with_dev,
+                        chat_id=chat_id, audio=f_send, title=title_str,
                         filename=os.path.basename(file_to_send)
                     )
                 # Send copyright message after sending each file
@@ -736,11 +712,8 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
     finally:
         # Clean up temporary files and remove active download status.
         if temp_dir and os.path.exists(temp_dir):
-            try:
-                shutil.rmtree(temp_dir, ignore_errors=True)
-                logger.info(f"Cleaned up temporary directory {temp_dir} for user {user_id}.")
-            except Exception as e:
-                logger.error(f"Error cleaning up temp dir for user {user_id}: {e}")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            logger.info(f"Cleaned up temporary directory {temp_dir} for user {user_id}.")
         if user_id in active_downloads:
             del active_downloads[user_id]
             logger.info(f"Removed active download for user {user_id}.")
