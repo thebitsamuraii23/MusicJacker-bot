@@ -650,7 +650,16 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         for file_name in all_temp_files:
             file_path = os.path.join(temp_dir, file_name)
             file_ext_lower = os.path.splitext(file_name)[1].lower()
-            base_title = os.path.splitext(file_name.split(" [")[0])[0] # Extract title from file name.
+            # Удаляем все суффиксы типа ' - Made by ... [id]' из названия
+            base_title = file_name
+            # Удалить суффикс ' - Made by ... [id]' если есть
+            if ' - Made by ' in base_title:
+                base_title = base_title.split(' - Made by ')[0]
+            # Удалить суффикс ' [id]' если есть
+            if ' [' in base_title:
+                base_title = base_title.split(' [')[0]
+            # Удалить расширение
+            base_title = os.path.splitext(base_title)[0]
             if file_ext_lower in [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]:
                 downloaded_files_info.append((file_path, base_title))
 
@@ -659,6 +668,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             return
 
         total_files = len(downloaded_files_info)
+
         for i, (file_to_send, title_str) in enumerate(downloaded_files_info):
             await update_status_message_async(texts["sending_file"].format(index=i+1, total=total_files))
             file_size = os.path.getsize(file_to_send)
@@ -667,10 +677,13 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                 await context.bot.send_message(chat_id=chat_id, text=f"{texts['too_big']} ({os.path.basename(file_to_send)})")
                 continue
 
+            # Добавляем суффикс с именем разработчика
+            title_with_dev = f"{title_str} (Developed by BitSamurai)"
+
             try:
                 with open(file_to_send, 'rb') as f_send:
                     await context.bot.send_audio(
-                        chat_id=chat_id, audio=f_send, title=title_str,
+                        chat_id=chat_id, audio=f_send, title=title_with_dev,
                         filename=os.path.basename(file_to_send)
                     )
                 # Send copyright message after sending each file
