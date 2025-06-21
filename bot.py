@@ -164,7 +164,8 @@ LANGUAGES = {
             f"📢 Для работы с ботом, подпишитесь на канал {REQUIRED_CHANNEL}.\n"
             "\n💡 Веб-версия: youtubemusicdownloader.life (или bit.ly/ytmusicload)\n"
             "\n✨ Не забудьте подписаться на канал для обновлений и поддержки: @ytdlpdeveloper\n"
-            "\n📝 Блог: https://artoflife2303.github.io/miniblog/"
+            "\n📝 Блог: https://artoflife2303.github.io/miniblog/\n"
+            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
         ),
         "choose_lang": "Выберите язык / Choose language:",
         "not_subscribed": f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова.",
@@ -210,7 +211,8 @@ LANGUAGES = {
             f"📢 To use the bot, please subscribe to the channel {REQUIRED_CHANNEL}.\n"
             "\n💡 Web version: youtubemusicdownloader.life (or bit.ly/ytmusicload)\n"
             "\n✨ Don't forget to subscribe for updates and support: @ytdlpdeveloper\n"
-            "\n📝 Blog: https://artoflife2303.github.io/miniblog/"
+            "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
+            "\n💻 <a href=\"https://github.com/BitSamurai23/YTMusicDownloader\">GitHub: Open Source Code</a>"
         ),
         "choose_lang": "Choose language:",
         "not_subscribed": f"To use the bot, please subscribe to {REQUIRED_CHANNEL} and try again.",
@@ -248,7 +250,194 @@ LANGUAGES = {
         "copyright_post": "⚠️ This material may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, contact copyrightytdlpbot@gmail.com.",
         "copyright_command": "⚠️ Warning! All materials downloaded via this bot may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, contact copyrightytdlpbot@gmail.com and we will remove the content."
     },
-    # ... аналогично для других языков, без GitHub-ссылок ...
+    "es": {
+        "start": (
+            "👋 ¡Hola! Soy un bot para descargar música de YouTube y SoundCloud.\n\n"
+            "🔗 Solo envía un enlace de YouTube o SoundCloud (video o pista) y te ayudaré a descargar el audio.\n"
+            "\n🎵 ¡También puedo buscar música por nombre! Escribe /search.\n\n"
+            f"📢 Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL}.\n"
+            "\n💡 Versión web: youtubemusicdownloader.life (o bit.ly/ytmusicload)\n"
+            "\n✨ No olvides suscribirte para actualizaciones y soporte: @ytdlpdeveloper\n"
+            "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
+            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
+        ),
+        "choose_lang": "Elige idioma:",
+        "not_subscribed": f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL} y vuelve a intentarlo.",
+        "checking": "Verificando enlace...",
+        "not_youtube": "Este enlace no es compatible. Por favor, envía un enlace válido de YouTube o SoundCloud.",
+        "choose_download_type": "Elige el formato de audio:",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
+        "downloading_audio": "Descargando audio... Por favor espera.",
+        "download_progress": "Descargando: {percent} a {speed}, queda ~{eta}",
+        "too_big": f"El archivo es demasiado grande (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Prueba con otro video o pista.",
+        "done_audio": "¡Listo! Audio enviado.",
+        "cooldown_message": "⏳ La próxima descarga estará disponible en 15 segundos.",
+        "error": "¡Algo salió mal! Verifica el enlace o inténtalo de nuevo.",
+        "error_private_video": "Este es un video privado y no puede ser descargado.",
+        "error_video_unavailable": "Video no disponible.",
+        "sending_file": "Enviando archivo {index} de {total}...",
+        "cancel_button": "Cancelar",
+        "cancelling": "Cancelando descarga...",
+        "cancelled": "Descarga cancelada.",
+        "download_in_progress": "Otra descarga ya está en progreso. Por favor espera o cancélala.",
+        "already_cancelled_or_done": "La descarga ya fue cancelada o completada.",
+        "url_error_generic": "No se pudo procesar la URL. Asegúrate de que sea un enlace válido de YouTube o SoundCloud.",
+        "search_prompt": (
+            "Ingrese el nombre de la pista o artista. Luego haga clic en la música, se descargará en formato MP3.\n"
+            "Ingrese /cancel para cancelar la búsqueda.\n"
+            "Ingrese /search para buscar música por nombre (YouTube)."
+        ),
+        "searching": "Buscando música...",
+        "unsupported_url_in_search": "El enlace no es compatible. Por favor, compruebe el enlace o pruebe con otra consulta. (Alternativamente, si no funcionó, puede descargar una pista de otro artista o un Remix)",
+        "no_results": "No se encontraron resultados. Intente con otra consulta.",
+        "choose_track": "Seleccione una pista para descargar en MP3:",
+        "downloading_selected_track": "Descargando la pista seleccionada en MP3...",
+        "copyright_pre": "⚠️ ¡Atención! El material que está a punto de descargar puede estar protegido por derechos de autor. Úselo solo para fines personales. Si es titular de derechos y cree que se están violando sus derechos, escriba a copyrightytdlpbot@gmail.com para eliminar el contenido.",
+        "copyright_post": "⚠️ Este material puede estar protegido por derechos de autor. Úselo solo para fines personales. Si es titular de derechos y cree que se están violando sus derechos, escriba a copyrightytdlpbot@gmail.com.",
+        "copyright_command": "⚠️ ¡Atención! Todo el material descargado a través de este bot puede estar protegido por derechos de autor. Úselo solo para fines personales. Si es titular de derechos y cree que se están violando sus derechos, escriba a copyrightytdlpbot@gmail.com y eliminaremos el contenido."
+    },
+    "tr": {
+        "start": (
+            "👋 Merhaba! Ben YouTube ve SoundCloud'dan müzik indirmek için bir botum.\n\n"
+            "🔗 Sadece bir YouTube veya SoundCloud bağlantısı gönderin (video veya parça), ses dosyasını indirmenize yardımcı olacağım.\n"
+            "\n🎵 Ayrıca isimle müzik arayabilirim! Sadece /search yazın.\n\n"
+            f"📢 Botu kullanmak için lütfen {REQUIRED_CHANNEL} kanalına abone olun.\n"
+            "\n💡 Web versiyonu: youtubemusicdownloader.life (veya bit.ly/ytmusicload)\n"
+            "\n✨ Güncellemeler ve destek için abone olmayı unutmayın: @ytdlpdeveloper\n"
+            "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
+            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
+        ),
+        "choose_lang": "Dil seçin:",
+        "not_subscribed": f"Botu kullanmak için lütfen {REQUIRED_CHANNEL} kanalına abone olun ve tekrar deneyin.",
+        "checking": "Bağlantı kontrol ediliyor...",
+        "not_youtube": "Bu desteklenmeyen bir bağlantı. Lütfen geçerli bir YouTube veya SoundCloud bağlantısı gönderin.",
+        "choose_download_type": "Ses formatı seçin:",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
+        "downloading_audio": "Ses indiriliyor... Lütfen bekleyin.",
+        "download_progress": "İndiriliyor: {percent} hızında {speed}, kalan ~{eta}",
+        "too_big": f"Dosya çok büyük (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Başka bir video veya parça deneyin.",
+        "done_audio": "Tamamlandı! Ses gönderildi.",
+        "cooldown_message": "⏳ Sonraki indirme 15 saniye sonra kullanılabilir.",
+        "error": "Bir hata oluştu. Bağlantıyı kontrol edin veya tekrar deneyin!\n",
+        "error_private_video": "Bu özel bir video ve indirilemez.",
+        "error_video_unavailable": "Video kullanılamıyor.",
+        "sending_file": "{total} dosyadan {index}. gönderiliyor...",
+        "cancel_button": "İptal",
+        "cancelling": "İndirme iptal ediliyor...",
+        "cancelled": "İndirme iptal edildi.",
+        "download_in_progress": "Başka bir indirme zaten devam ediyor. Lütfen bekleyin veya iptal edin.",
+        "already_cancelled_or_done": "İndirme zaten iptal edildi veya tamamlandı.",
+        "url_error_generic": "URL işlenemedi. Geçerli bir YouTube veya SoundCloud bağlantısı olduğundan emin olun.",
+        "search_prompt": (
+            "Parça adı veya sanatçı adı girin. Ardından müziğe tıklayın, MP3 formatında indirilecektir.\n"
+            "Aramayı iptal etmek için /cancel yazın.\n"
+            "Müzik adıyla arama yapmak için /search yazın (YouTube)."
+        ),
+        "searching": "Müzik aranıyor...",
+        "unsupported_url_in_search": "Bağlantı desteklenmiyor. Lütfen bağlantıyı kontrol edin veya başka bir sorgu deneyin. (Alternatif olarak, işe yaramadıysa, başka bir sanatçıdan veya Remix bir parça indirebilirsiniz)",
+        "no_results": "Hiçbir sonuç bulunamadı. Başka bir sorgu deneyin.",
+        "choose_track": "MP3 olarak indirmek için bir parça seçin:",
+        "downloading_selected_track": "Seçilen parça MP3 olarak indiriliyor...",
+        "copyright_pre": "⚠️ Dikkat! İndirmek üzrə olduğunuz materyal telif haqqı ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_post": "⚠️ Bu materyal telif haqqı ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
+    },
+    "ar": {
+        "start": (
+            "👋 مرحبًا! أنا بوت لتنزيل الموسيقى من YouTube و SoundCloud.\n\n"
+            "🔗 فقط أرسل رابط YouTube أو SoundCloud (فيديو أو مسار) وسأساعدك في تنزيل الصوت.\n"
+            "\n🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! فقط اكتب /search.\n\n"
+            f"📢 لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNEL}.\n"
+            "\n💡 النسخة الويب: youtubemusicdownloader.life (أو bit.ly/ytmusicload)\n"
+            "\n✨ لا تنس الاشتراك للحصول على التحديثات والدعم: @ytdlpdeveloper\n"
+            "\n📝 المدونة: https://artoflife2303.github.io/miniblog/\n"
+            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
+        ),
+        "choose_lang": "اختر اللغة:",
+        "not_subscribed": f"لاستخدام البوت، يرجى الاشتراك في قناة {REQUIRED_CHANNEL} والمحاولة مرة أخرى.",
+        "checking": "جاري التحقق من الرابط...",
+        "not_youtube": "هذا ليس رابطًا مدعومًا. يرجى إرسال رابط YouTube أو SoundCloud صالح.",
+        "choose_download_type": "اختر تنسيق الصوت:",
+        "audio_button_mp3": "🎵 MP3 (يوتيوب)",
+        "audio_button_sc": "🎵 MP3 (ساوند كلاود)",
+        "downloading_audio": "جاري تنزيل الصوت... يرجى الانتظار.",
+        "download_progress": "جاري التنزيل: {percent} بسرعة {speed}، متبقي ~{eta}",
+        "too_big": f"الملف كبير جدًا (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). جرب فيديو أو مسارًا آخر.",
+        "done_audio": "تم! تم إرسال الصوت.",
+        "cooldown_message": "⏳ سيكون التنزيل التالي متاحًا بعد 15 ثانية.",
+        "error": "حدث خطأ ما. تحقق من الرابط أو حاول مرة أخرى!",
+        "error_private_video": "هذا فيديو خاص ولا يمكن تنزيله.",
+        "error_video_unavailable": "الفيديو غير متاح.",
+        "sending_file": "جاري إرسال الملف {index} من {total}...",
+        "cancel_button": "إلغاء",
+        "cancelling": "جاري إلغاء التنزيل...",
+        "cancelled": "تم إلغاء التنزيل.",
+        "download_in_progress": "تنزيل آخر قيد التقدم بالفعل. يرجى الانتظار أو إلغائه.",
+        "already_cancelled_or_done": "تم إلغاء التنزيل أو إكماله بالفعل.",
+        "url_error_generic": "فشل في معالجة الرابط. تأكد من أنه رابط YouTube أو SoundCloud صالح.",
+        "search_prompt": (
+            "أدخل اسم المقطع الصوتي أو الفنان. ثم انقر على الموسيقى، سيتم تنزيلها بصيغة MP3.\n"
+            "أدخل /cancel لإلغاء البحث.\n"
+            "أدخل /search للبحث عن الموسيقى بالاسم (يوتيوب)."
+        ),
+        "searching": "جاري البحث عن الموسيقى...",
+        "unsupported_url_in_search": "الرابط غير مدعوم. يرجى التحقق من الرابط أو تجربة استعلام آخر. (بدلاً من ذلك، إذا لم ينجح الأمر، يمكنك تنزيل مقطع صوتي من فنان آخر أو ريمكس)",
+        "no_results": "لم يتم العثور على شيء. حاول استعلامًا آخر.",
+        "choose_track": "حدد مسارًا لتنزيله بصيغة MP3:",
+        "downloading_selected_track": "جاري تنزيل المسار المحدد بصيغة MP3...",
+        "copyright_pre": " تحذير! قد يكون المحتوى الذي توشك على تنزيله محميًا بحقوق النشر. استخدمه للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com لحذف المحتوى.",
+        "copyright_post": "⚠️ قد يكون هذا المحتوى محميًا بحقوق النشر. استخدمه للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com.",
+        "copyright_command": "⚠️ تحذير! جميع المواد التي يتم تنزيلها عبر هذا البوت قد تكون محمية بحقوق النشر. استخدمها للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com وسنقوم بحذف المحتوى."
+    },
+    "az": {
+        "start": (
+            "👋 Salam! Mən YouTube və SoundCloud-dan musiqi yükləmək üçün bir botam.\n\n"
+            "🔗 Sadəcə YouTube və ya SoundCloud linki göndərin (video və ya trek), səs faylını yükləməyə kömək edəcəyəm.\n"
+            "\n🎵 Həmçinin adla musiqi axtara bilərəm! Sadəcə /search yazın.\n\n"
+            f"📢 Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun.\n"
+            "\n💡 Veb versiya: youtubemusicdownloader.life (və ya bit.ly/ytmusicload)\n"
+            "\n✨ Yeniliklər və dəstək üçün kanala abunə olmağı unutmayın: @ytdlpdeveloper\n"
+            "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
+            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
+        ),
+        "choose_lang": "Dil seçin:",
+        "not_subscribed": f"Botdan istifadə etmək üçün zəhmət olmasa {REQUIRED_CHANNEL} kanalına abunə olun və yenidən cəhd edin.",
+        "checking": "Link yoxlanılır...",
+        "not_youtube": "Bu dəstəklənməyən bir bağlantıdır. Zəhmət olmasa, etibarlı bir YouTube və ya SoundCloud linki göndərin.",
+        "choose_download_type": "Səs formatını seçin:",
+        "audio_button_mp3": "🎵 MP3 (YouTube)",
+        "audio_button_sc": "🎵 MP3 (SoundCloud)",
+        "downloading_audio": "Səs yüklənir... Zəhmət olmasa gözləyin.",
+        "download_progress": "Yüklənir: {percent} sürətlə {speed}, qalıb ~{eta}",
+        "too_big": f"Fayl çox böyükdür (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Başqa bir video və ya trek sınayın.",
+        "done_audio": "Hazırdır! Səs göndərildi.",
+        "cooldown_message": "⏳ Növbəti yükləmə 15 saniyədən sonra mümkün olacaq.",
+        "error": "Nəsə səhv getdi. Linki yoxlayın və ya sonra cəhd edin!\n",
+        "error_private_video": "Bu şəxsi videodur və yüklənə bilməz.",
+        "error_video_unavailable": "Video mövcud deyil.",
+        "sending_file": "{total} fayldan {index}-i göndərilir...",
+        "cancel_button": "Ləğv et",
+        "cancelling": "Yükləmə ləğv edilir...",
+        "cancelled": "Yükləmə ləğv edildi.",
+        "download_in_progress": "Başqa bir yükləmə artıq davam edir. Zəhmət olmasa gözləyin və ya ləğv edin.",
+        "already_cancelled_or_done": "Yükləmə artıq ləğv edilib və ya tamamlanıb.",
+        "url_error_generic": "URL emal edilə bilmədi. Etibarlı bir YouTube və ya SoundCloud linki olduğundan əmin olun.",
+        "search_prompt": (
+            "Trek adı və ya ifaçı adı daxil edin. Sonra musiqiyə tıklayın, MP3 formatında yüklənəcək.\n"
+            "/cancel daxil edərək axtarışı ləğv edin.\n"
+            "/search daxil edərək adla musiqi axtarın (YouTube)."
+        ),
+        "searching": "Musiqi axtarılır...",
+        "unsupported_url_in_search": "Link dəstəklənmir. Zəhmət olmasa, linki yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
+        "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
+        "choose_track": "MP3 olaraq yükləmək üçün bir trek seçin:",
+        "downloading_selected_track": "Seçilən trek MP3 olaraq yüklənir...",
+        "copyright_pre": "⚠️ Diqqət! Yüklədiyiniz material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_post": "⚠️ Bu material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
+    },
 }
 
 def get_user_lang(user_id):
@@ -486,8 +675,8 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                     )
                 # Send copyright message after sending each file
                 await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
-                # Send GitHub/Blog/Channel message after sending each file
-                await context.bot.send_message(chat_id=chat_id, text=texts.get("github_message"), parse_mode="HTML", disable_web_page_preview=True)
+                # Send GitHub message after sending each file
+                await context.bot.send_message(chat_id=chat_id, text="💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader")
                 logger.info(f"Successfully sent audio for {url} to user {user_id}")
             except Exception as e:
                 logger.error(f"Error sending audio file {os.path.basename(file_to_send)} to user {user_id}: {e}")
@@ -913,16 +1102,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Handles the /start command: prompts to choose a language and sends copyright warning.
     """
     logger.info(f"User {update.effective_user.id} issued /start command.")
+    # Только меню выбора языка, без приветственного текста
     await choose_language(update, context)
-    user_id = update.effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    # Send beautiful start message with emojis and HTML formatting
-    await update.message.reply_text(texts["start"], parse_mode="HTML", disable_web_page_preview=True)
-    # Send copyright info
-    await update.message.reply_text(texts["copyright_post"])
-    # Send GitHub/Blog/Channel info
-    await update.message.reply_text(texts["github_message"], parse_mode="HTML", disable_web_page_preview=True)
 
 if __name__ == '__main__':
     main()
