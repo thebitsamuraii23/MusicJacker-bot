@@ -717,7 +717,7 @@ def is_url(text):
     """
     Checks if a string is a YouTube or SoundCloud URL.
     """
-    text = text.lower().strip
+    text = text.lower().strip()
     return (
         text.startswith("http://") or text.startswith("https://")
     ) and (
@@ -836,6 +836,12 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     """
     Smart message handler: determines if the message is a URL or a search query.
     """
+
+    # Проверка на наличие текста в сообщении
+    if not update.message or not update.message.text:
+        logger.warning("smart_message_handler: update.message или update.message.text отсутствует")
+        return
+
     user_id = update.effective_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
