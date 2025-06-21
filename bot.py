@@ -565,9 +565,19 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         return
 
     chat_id = update_or_query.message.chat_id
+    # Для каждого пользователя — отдельная временная папка
     temp_dir = None
     status_message = None
     active_downloads = context.bot_data.setdefault('active_downloads', {})
+    # Ограничение: только один активный download на пользователя
+    if user_id in active_downloads:
+        try:
+            await context.bot.send_message(chat_id=update_or_query.effective_chat.id,
+                                           text=texts.get("download_in_progress", "Другая загрузка уже в процессе. Пожалуйста, подождите или отмените её."))
+        except Exception:
+            pass
+        return
+    active_downloads[user_id] = True
     loop = asyncio.get_running_loop()
     cancel_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(texts["cancel_button"], callback_data=f"cancel_{user_id}")]])
 
@@ -612,7 +622,8 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         # Сохраняем время начала скачивания (чтобы не было параллельных попыток)
         user_last_download_time[user_id] = now
         status_message = await context.bot.send_message(chat_id=chat_id, text=texts["downloading_audio"], reply_markup=cancel_keyboard)
-        temp_dir = tempfile.mkdtemp()
+        # Создаём уникальную временную папку для каждого пользователя
+        temp_dir = tempfile.mkdtemp(prefix=f"ytmusic_{user_id}_")
         ydl_opts = {
             'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
             'format': 'bestaudio/best',
@@ -725,8 +736,11 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
     finally:
         # Clean up temporary files and remove active download status.
         if temp_dir and os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            logger.info(f"Cleaned up temporary directory {temp_dir} for user {user_id}.")
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                logger.info(f"Cleaned up temporary directory {temp_dir} for user {user_id}.")
+            except Exception as e:
+                logger.error(f"Error cleaning up temp dir for user {user_id}: {e}")
         if user_id in active_downloads:
             del active_downloads[user_id]
             logger.info(f"Removed active download for user {user_id}.")
