@@ -1,7 +1,6 @@
 import os # Import necessary libraries
 import logging # Import logging for debugging and information
 import asyncio # Import asyncio for asynchronous operations
-import tempfile # Import tempfile for temporary file handling
 import shutil # Import shutil for file operations
 import json # Import json for handling JSON data
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand # Import necessary Telegram bot components 
@@ -9,7 +8,34 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from dotenv import load_dotenv # Import dotenv for environment variable management 
 import yt_dlp # Import yt-dlp for downloading media
 
-# --- Bot configuration and language dictionaries ---
+DOWNLOADS_DIR = "downloads"
+HISTORY_FILE = "history.json"
+QUEUE_FILE = "queue.json"
+CACHE_FILE = "cache.json"
+STATS_FILE = "stats.json"
+
+# Ensure downloads directory exists
+os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+
+# --- Persistent storage helpers ---
+def load_json(filename, default):
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return default
+    return default
+
+def save_json(filename, data):
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+# Load persistent data
+user_history = load_json(HISTORY_FILE, {})
+download_queue = load_json(QUEUE_FILE, [])
+track_cache = load_json(CACHE_FILE, {})
+stats = load_json(STATS_FILE, {})
 load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -564,10 +590,25 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             pass # Ignore error if message cannot be sent.
         return
 
+
     chat_id = update_or_query.message.chat_id
-    temp_dir = None
     status_message = None
     active_downloads = context.bot_data.setdefault('active_downloads', {})
+    global download_queue, user_history, track_cache, stats
+
+    # --- Download queue logic ---
+    if user_id in active_downloads:
+        # Add to queue if already downloading
+        download_queue.append({"user_id": user_id, "url": url, "download_type": download_type})
+        save_json(QUEUE_FILE, download_queue)
+        try:
+            await context.bot.send_message(chat_id=update_or_query.effective_chat.id,
+                                           text=texts.get("download_in_progress", "Другая загрузка уже в процессе. Пожалуйста, подождите или отмените её."))
+        except Exception:
+            pass
+        return
+    active_downloads[user_id] = True
+    save_json(QUEUE_FILE, download_queue)
     loop = asyncio.get_running_loop()
     cancel_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(texts["cancel_button"], callback_data=f"cancel_{user_id}")]])
 
@@ -608,51 +649,90 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             progress_text = texts["download_progress"].format(percent=percent_str, speed=speed_str, eta=eta_str)
             asyncio.run_coroutine_threadsafe(update_status_message_async(progress_text), loop)
 
+
     try:
-        # Сохраняем время начала скачивания (чтобы не было параллельных попыток)
         user_last_download_time[user_id] = now
         status_message = await context.bot.send_message(chat_id=chat_id, text=texts["downloading_audio"], reply_markup=cancel_keyboard)
-        temp_dir = tempfile.mkdtemp()
-        ydl_opts = {
-            'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
-            'format': 'bestaudio/best',
-            'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
-            'progress_hooks': [progress_hook],
-            'nocheckcertificate': True,
-            'quiet': True,
-            'no_warnings': True,
-            'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192K',
-            }],
-            'postprocessor_args': {
-                'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
-            },
-            'verbose': True # Enable verbose output to see what errors occur.
-        }
-        # Remove None values from ydl_opts to avoid errors.
-        ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
 
-        logger.info(f"Starting download for {url} by user {user_id}")
-        try:
-            await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url)
-        except Exception as e:
-            if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
-                await update_status_message_async("The link is not supported. Please check the link or try another query.", show_cancel_button=False)
-                return
-            logger.error(f"Error during yt-dlp download for {url}: {e}")
-            raise # Re-raise exception after logging.
-
-        downloaded_files_info = []
-        all_temp_files = os.listdir(temp_dir)
-        for file_name in all_temp_files:
-            file_path = os.path.join(temp_dir, file_name)
-            file_ext_lower = os.path.splitext(file_name)[1].lower()
-            base_title = os.path.splitext(file_name.split(" [")[0])[0] # Extract title from file name.
-            if file_ext_lower in [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]:
-                downloaded_files_info.append((file_path, base_title))
+        # --- Caching logic ---
+        cache_key = f"{url}|{download_type}"
+        cached = track_cache.get(cache_key)
+        cover_path = None
+        if cached and os.path.exists(cached['file_path']):
+            # Use cached file
+            downloaded_files_info = [(cached['file_path'], cached['title'])]
+            cover_path = cached.get('cover_path')
+        else:
+            # Download to shared directory and extract cover
+            outtmpl = os.path.join(DOWNLOADS_DIR, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s')
+            cover_outtmpl = os.path.join(DOWNLOADS_DIR, '%(title).140B - COVER [%(id)s].jpg')
+            ydl_opts = {
+                'outtmpl': outtmpl,
+                'format': 'bestaudio/best',
+                'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
+                'progress_hooks': [progress_hook],
+                'nocheckcertificate': False,
+                'quiet': True,
+                'no_warnings': True,
+                'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
+                'postprocessors': [
+                    {
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '128',
+                    },
+                    {
+                        'key': 'EmbedThumbnail',
+                    },
+                    {
+                        'key': 'FFmpegMetadata',
+                    }
+                ],
+                'writethumbnail': True,
+                'postprocessor_args': {
+                    'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
+                },
+                'verbose': True
+            }
+            ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
+            logger.info(f"Starting download for {url} by user {user_id}")
+            # Extract info to get thumbnail path
+            info = await asyncio.to_thread(lambda: yt_dlp.YoutubeDL(ydl_opts).extract_info(url, download=True))
+            # Find the downloaded file
+            files = os.listdir(DOWNLOADS_DIR)
+            candidates = [f for f in files if url.split('/')[-1].split('?')[0] in f or f.endswith('.mp3')]
+            downloaded_files_info = []
+            thumb_candidates = [f for f in files if 'COVER' in f or f.endswith('.jpg') or f.endswith('.webp')]
+            for file_name in candidates:
+                file_path = os.path.join(DOWNLOADS_DIR, file_name)
+                file_ext_lower = os.path.splitext(file_name)[1].lower()
+                base_title = file_name
+                if ' - Made by ' in base_title:
+                    base_title = base_title.split(' - Made by ')[0]
+                if ' [' in base_title:
+                    base_title = base_title.split(' [')[0]
+                base_title = os.path.splitext(base_title)[0]
+                if file_ext_lower in [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]:
+                    downloaded_files_info.append((file_path, base_title))
+                    # Try to find cover art
+                    cover_path = None
+                    # 1. yt-dlp info dict
+                    if 'thumbnails' in info and info['thumbnails']:
+                        thumb_url = info['thumbnails'][-1]['url']
+                        # Try to find downloaded thumbnail file
+                        for thumb_file in thumb_candidates:
+                            if base_title in thumb_file:
+                                cover_path = os.path.join(DOWNLOADS_DIR, thumb_file)
+                                break
+                    # 2. fallback: any .jpg/.webp in folder with similar name
+                    if not cover_path:
+                        for thumb_file in thumb_candidates:
+                            if base_title in thumb_file:
+                                cover_path = os.path.join(DOWNLOADS_DIR, thumb_file)
+                                break
+                    # Update cache
+                    track_cache[cache_key] = {'file_path': file_path, 'title': base_title, 'cover_path': cover_path}
+                    save_json(CACHE_FILE, track_cache)
 
         if not downloaded_files_info:
             await update_status_message_async(texts["error"] + " (file not found)", show_cancel_button=False)
@@ -662,65 +742,83 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         for i, (file_to_send, title_str) in enumerate(downloaded_files_info):
             await update_status_message_async(texts["sending_file"].format(index=i+1, total=total_files))
             file_size = os.path.getsize(file_to_send)
-
             if file_size > TELEGRAM_FILE_SIZE_LIMIT_BYTES:
                 await context.bot.send_message(chat_id=chat_id, text=f"{texts['too_big']} ({os.path.basename(file_to_send)})")
                 continue
-
+            title_with_dev = f"{title_str} (Developed by BitSamurai)"
             try:
                 with open(file_to_send, 'rb') as f_send:
-                    await context.bot.send_audio(
-                        chat_id=chat_id, audio=f_send, title=title_str,
-                        filename=os.path.basename(file_to_send)
-                    )
-                # Send copyright message after sending each file
+                    # Try to send cover art if available
+                    send_kwargs = dict(chat_id=chat_id, audio=f_send, title=title_with_dev, filename=os.path.basename(file_to_send))
+                    if cover_path and os.path.exists(cover_path):
+                        with open(cover_path, 'rb') as thumb_f:
+                            send_kwargs['thumbnail'] = thumb_f
+                            await context.bot.send_audio(**send_kwargs)
+                    else:
+                        await context.bot.send_audio(**send_kwargs)
                 await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
-                # Send GitHub message after sending each file
                 await context.bot.send_message(chat_id=chat_id, text="💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader")
                 logger.info(f"Successfully sent audio for {url} to user {user_id}")
+                # Update history and stats
+                user_history.setdefault(str(user_id), []).append({
+                    'url': url,
+                    'title': title_str,
+                    'timestamp': int(time.time())
+                })
+                save_json(HISTORY_FILE, user_history)
+                stats['total_downloads'] = stats.get('total_downloads', 0) + 1
+                stats.setdefault('top_tracks', {})[title_str] = stats.get('top_tracks', {}).get(title_str, 0) + 1
+                stats.setdefault('top_users', {})[str(user_id)] = stats.get('top_users', {}).get(str(user_id), 0) + 1
+                save_json(STATS_FILE, stats)
             except Exception as e:
                 logger.error(f"Error sending audio file {os.path.basename(file_to_send)} to user {user_id}: {e}")
                 await context.bot.send_message(chat_id=chat_id, text=f"{texts['error']} (Error sending file {os.path.basename(file_to_send)})")
 
         await update_status_message_async(texts["done_audio"], show_cancel_button=False)
-        # Отправить отдельное сообщение с таймаутом после отправки музыки
         try:
             await context.bot.send_message(chat_id=chat_id, text=texts.get("cooldown_message", "⏳ Следующее скачивание будет доступно через 15 секунд."))
         except Exception:
             pass
 
     except asyncio.CancelledError:
-        # Handle download cancellation.
         logger.info(f"Download cancelled for user {user_id}.")
         if status_message:
             await update_status_message_async(texts["cancelled"], show_cancel_button=False)
         else:
             await context.bot.send_message(chat_id=chat_id, text=texts["cancelled"])
     except Exception as e:
-        # General error handling for download.
         if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
             if status_message:
                 await update_status_message_async("The link is not supported. Please check the link or try another query.", show_cancel_button=False)
             else:
                 await context.bot.send_message(chat_id=chat_id, text="The link is not supported. Please check the link or try another query.")
             return
-        logger.critical(f"Unhandled error in handle_download for user {user_id}: {e}", exc_info=True) # Use critical for unhandled errors
+        logger.critical(f"Unhandled error in handle_download for user {user_id}: {e}", exc_info=True)
         if status_message:
             await update_status_message_async(texts["error"] + str(e), show_cancel_button=False)
         else:
             await context.bot.send_message(chat_id=chat_id, text=texts["error"] + str(e))
     finally:
-        # Clean up temporary files and remove active download status.
-        if temp_dir and os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            logger.info(f"Cleaned up temporary directory {temp_dir} for user {user_id}.")
         if user_id in active_downloads:
             del active_downloads[user_id]
             logger.info(f"Removed active download for user {user_id}.")
-        # Обновляем время последнего скачивания только если не было ошибки
-        # (чтобы не блокировать пользователя из-за ошибки)
-        if 'now' in locals() and 'e' not in locals():
-            user_last_download_time[user_id] = time.time()
+        # Process next in queue if exists
+        if download_queue:
+            next_item = None
+            for idx, item in enumerate(download_queue):
+                if item['user_id'] not in active_downloads:
+                    next_item = download_queue.pop(idx)
+                    break
+            if next_item:
+                save_json(QUEUE_FILE, download_queue)
+                # Schedule next download for this user
+                lang = get_user_lang(next_item['user_id'])
+                texts = LANGUAGES[lang]
+                asyncio.create_task(handle_download(update_or_query, context, next_item['url'], texts, next_item['user_id'], next_item['download_type']))
+        save_json(QUEUE_FILE, download_queue)
+        save_json(HISTORY_FILE, user_history)
+        save_json(CACHE_FILE, track_cache)
+        save_json(STATS_FILE, stats)
 
 async def select_download_type_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
