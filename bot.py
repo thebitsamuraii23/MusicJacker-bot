@@ -1,3 +1,24 @@
+import requests
+# Получение thumbnail через yt-dlp (YouTube)
+def get_youtube_thumbnail(url):
+    try:
+        ydl_opts = {
+            'quiet': True,
+            'skip_download': True,
+            'nocheckcertificate': True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            thumb_url = info.get('thumbnail')
+            if not thumb_url and 'thumbnails' in info and info['thumbnails']:
+                thumb_url = info['thumbnails'][-1]['url']
+            if thumb_url:
+                resp = requests.get(thumb_url, timeout=10)
+                if resp.status_code == 200:
+                    return resp.content
+    except Exception as e:
+        logging.warning(f"Could not fetch YouTube thumbnail: {e}")
+    return None
 import os # Import necessary libraries
 import logging # Import logging for debugging and information
 import asyncio # Import asyncio for asynchronous operations
@@ -746,7 +767,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                 await context.bot.send_message(chat_id=chat_id, text=f"{texts['too_big']} ({os.path.basename(file_to_send)})")
                 continue
 
-            # --- Обложка (альбомный ковер, сжатие до <200KB, исправлено для Telegram) ---
+            # --- Обложка (альбомный ковер, сжатие до <200KB, исправлено для Telegram, с fallback на yt-dlp thumbnail) ---
             cover_bytes = None
             try:
                 if file_to_send.endswith('.mp3'):
@@ -767,6 +788,10 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             except Exception as e:
                 logger.debug(f"No cover found or error extracting cover: {e}")
                 cover_bytes = None
+
+            # Если не нашли обложку в файле — пробуем получить через yt-dlp
+            if not cover_bytes and 'youtube.com' in url or 'youtu.be' in url:
+                cover_bytes = get_youtube_thumbnail(url)
 
             # --- Сжимаем обложку до <200KB (Telegram limit) ---
             thumb_bytes = None
