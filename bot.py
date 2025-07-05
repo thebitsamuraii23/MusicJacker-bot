@@ -1,4 +1,4 @@
-mport requests
+import requests
 # Получение thumbnail через yt-dlp (YouTube)
 def get_youtube_thumbnail(url):
     try:
