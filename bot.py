@@ -1,4 +1,4 @@
-import requests
+mport requests
 # Получение thumbnail через yt-dlp (YouTube)
 def get_youtube_thumbnail(url):
     try:
@@ -6,6 +6,7 @@ def get_youtube_thumbnail(url):
             'quiet': True,
             'skip_download': True,
             'nocheckcertificate': True,
+            'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -13,7 +14,17 @@ def get_youtube_thumbnail(url):
             if not thumb_url and 'thumbnails' in info and info['thumbnails']:
                 thumb_url = info['thumbnails'][-1]['url']
             if thumb_url:
-                resp = requests.get(thumb_url, timeout=10)
+                # --- Передаем cookies в requests ---
+                cookies = None
+                if os.path.exists(cookies_path):
+                    import http.cookiejar
+                    cj = http.cookiejar.MozillaCookieJar()
+                    try:
+                        cj.load(cookies_path, ignore_discard=True, ignore_expires=True)
+                        cookies = {c.name: c.value for c in cj}
+                    except Exception as e:
+                        logging.warning(f"Could not load cookies for requests: {e}")
+                resp = requests.get(thumb_url, timeout=10, cookies=cookies)
                 if resp.status_code == 200:
                     return resp.content
     except Exception as e:
