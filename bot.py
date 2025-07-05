@@ -143,7 +143,7 @@ LANGUAGES = {
         "already_cancelled_or_done": "Download already cancelled or completed.",
         "url_error_generic": "Failed to process URL. Make sure it's a valid YouTube or SoundCloud link.",
         "search_prompt": (
-            "Enter the track name or artist. Then click on the music, it will download in MP3 format.\n"
+            "Enter the track name or artist. Then click on the music, it will download in MP3/M4A format.\n"
             "Enter /cancel to cancel the search.\n"
             "Enter /search to search for music by name (YouTube)."
         ),
@@ -249,15 +249,15 @@ LANGUAGES = {
         "already_cancelled_or_done": "Загрузка уже отменена или завершена.",
         "url_error_generic": "Не удалось обработать URL. Убедитесь, что это корректная ссылка на YouTube или SoundCloud.",
         "search_prompt": (
-            "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрзится в формате MP3.\n"
+            "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрузится в формате MP3/M4A.\n"
             "Введите /cancel для отмены поиска.\n"
             "Введите /search для поиска музыки по названию (YouTube)."
         ),
         "searching": "Ищу музыку...",
         "unsupported_url_in_search": "Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос.(Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)",
         "no_results": "Ничего не найдено. Попробуйте другой запрос.",
-        "choose_track": "Выберите трек для скачивания MP3:",
-        "downloading_selected_track": "Скачиваю выбранный трек в MP3...",
+        "choose_track": "Выберите трек для скачивания MP3/M4A:",
+        "downloading_selected_track": "Скачиваю выбранный трек в MP3/M4A...",
         "copyright_pre": "⚠️ Внимание! Загружаемый вами материал может быть защищён авторским правом. Используйте только для личных целей. Если вы являетесь правообладателем и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com для удаления контента.",
         "copyright_post": "⚠️ Данный материал может быть защищён авторским правом. Используйте только для личных целей. Если вы правообладатель и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com.",
         "copyright_command": "⚠️ Внимание! Все материалы, скачиваемые через этого бота, могут быть защищены авторским правом. Используйте только для личных целей. Если вы правообладатель и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com, и мы удалим соответствующий контент."
