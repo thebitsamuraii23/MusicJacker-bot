@@ -1038,6 +1038,17 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=keyboard
     )
 
+def is_url(text):
+    """
+    Checks if a string is a YouTube or SoundCloud URL.
+    """
+    text = text.lower().strip()
+    return (
+        text.startswith("http://") or text.startswith("https://")
+    ) and (
+        "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
+    )
+
 async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Smart message handler: determines if the message is a URL or a search query.
