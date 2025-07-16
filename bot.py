@@ -57,6 +57,33 @@ if not TOKEN:
     raise ValueError("Cant found TELEGRAM_BOT_TOKEN in environment variables.")
 
 
+async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Starts the music search process.
+    """
+    import time
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    logger.info(f"User {user_id} issued /search command.") 
+
+    # --- Таймаут между поисками ---
+    global user_last_search_time
+    now = time.time()
+    search_cooldown = 5  # секунд
+    last_search = user_last_search_time.get(user_id, 0)
+    if now - last_search < search_cooldown:
+        wait_sec = int(search_cooldown - (now - last_search))
+        try:
+            await update.message.reply_text(f"⏳ Пожалуйста, подождите {wait_sec} сек. перед следующим поиском.")
+        except Exception:
+            pass
+        return
+    user_last_search_time[user_id] = now
+
+    await update.message.reply_text(texts["search_prompt"])
+    context.user_data[f'awaiting_search_query_{user_id}'] = True
+
 def main():
     import logging
     load_dotenv() 
