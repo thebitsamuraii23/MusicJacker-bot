@@ -231,7 +231,7 @@ LANG_KEYBOARD = ReplyKeyboardMarkup( # Keyboard for selecting language
 )
 # Mapping language names to codes
 LANG_CODES = { # Mapping language names to their respective language codes
-    "Русский": "ru", "English": "en", "Español": "es", # Spanish
+    "Русский": "ru", "English": "en", "Españол": "es", # Spanish
     "Azərbaycan dili": "az", "Türkçe": "tr", "Українська": "uk", # Ukrainian
     "العربية": "ar" # Arabic
 }
@@ -426,11 +426,11 @@ LANGUAGES = {
             "Aramayı iptal etmek için /cancel yazın.\n"
             "Müzik adıyla arama yapmak için /search yazın (YouTube)."
         ),
-        "searching": "Müzik aranıyor...",
-        "unsupported_url_in_search": "Bağlantı desteklenmiyor. Lütfen bağlantıyı kontrol edin veya başka bir sorgu deneyin. (Alternatif olarak, işe yaramadıysa, başka bir sanatçıdan veya Remix bir parça indirebilirsiniz)",
-        "no_results": "Hiçbir sonuç bulunamadı. Başka bir sorgu deneyin.",
-        "choose_track": "MP3 olarak indirmek için bir parça seçin:",
-        "downloading_selected_track": "Seçilen parça MP3 olarak indiriliyor...",
+        "searching": "Musiqi axtarılır...",
+        "unsupported_url_in_search": "Bağlantı desteklenmir. Zəhmət olmasa, bağlantını yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir parça yükləyə bilərsiniz)",
+        "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
+        "choose_track": "MP3 olaraq yükləmək üçün bir trek seçin:",
+        "downloading_selected_track": "Seçilən trek MP3 olaraq yüklənir...",
         "copyright_pre": "⚠️ Dikkat! İndirmək üzrə olduğunuz materyal telif haqqı ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
         "copyright_post": "⚠️ Bu materyal telif haqqı ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
         "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
@@ -506,7 +506,7 @@ LANGUAGES = {
         "done_audio": "Hazırdır! Səs göndərildi.",
         "cooldown_message": "⏳ Növbəti yükləmə 15 saniyədən sonra mümkün olacaq.",
         "error": "Nəsə səhv getdi. Bağlantını yoxlayın və ya sonra cəhd edin!\n",
-        "error_private_video": "Bu şəxsi videodur və yüklənə bilməz.",
+        "error_private_video": "Bu xüsusi videodur və yüklənə bilməz.",
         "error_video_unavailable": "Video mövcud deyil.",
         "sending_file": "{total} fayldan {index}-i göndərilir...",
         "cancel_button": "Ləğv et",
@@ -628,28 +628,31 @@ def blocking_yt_dlp_download(ydl_opts, url_to_download):
     pass
 async def ask_download_type(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
     """
-    Sends a copyright warning and asks the user about the download type (MP3/M4A for YouTube/SoundCloud).
+    Sends a copyright warning and asks the user about the download type (MP3/M4A/MP4 for YouTube/SoundCloud).
     """
     user_id = update.effective_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
     await update.message.reply_text(texts.get("copyright_pre"))
     context.user_data[f'url_for_download_{user_id}'] = url
-    # Allow both mp3 and m4a for YouTube, only mp3 for SoundCloud
+    # Allow both mp3, m4a, mp4 for YouTube, only mp3 for SoundCloud
     if is_soundcloud_url(url):
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(texts["audio_button_sc"], callback_data=f"dltype_audio_sc_{user_id}")]
         ])
     else:
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🎵 MP3 (YouTube)", callback_data=f"dltype_audio_mp3_{user_id}"),
-             InlineKeyboardButton("🎵 M4A (YouTube)", callback_data=f"dltype_audio_m4a_{user_id}")]
+            [
+                InlineKeyboardButton("🎵 MP3 (YouTube)", callback_data=f"dltype_audio_mp3_{user_id}"),
+                InlineKeyboardButton("🎵 M4A (YouTube)", callback_data=f"dltype_audio_m4a_{user_id}"),
+                InlineKeyboardButton("📹 MP4 720p (YouTube)", callback_data=f"dltype_video_mp4_{user_id}")
+            ]
         ])
-    await update.message.reply_text("Выберите формат аудио:", reply_markup=keyboard)
+    await update.message.reply_text("Выберите формат аудио/видео:", reply_markup=keyboard)
 
 async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, url: str, texts: dict, user_id: int, download_type: str):
     """
-    Handles the download of an audio file from YouTube or SoundCloud.
+    Handles the download of an audio or video file from YouTube or SoundCloud.
     """
     import time
     if not update_or_query.message:
@@ -718,33 +721,26 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         if download_type == "audio_mp3" or download_type == "audio_sc":
             preferred_codec = "mp3"
             ext_list = [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]
-        elif download_type == "audio_m4a":
-            preferred_codec = "m4a"
-            ext_list = [".m4a", ".mp3", ".webm", ".ogg", ".opus", ".aac"]
-        else:
-            preferred_codec = "mp3"
-            ext_list = [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]
-
-        ydl_opts = {
-            'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
-            'format': 'bestaudio/best',
-            'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
-            'progress_hooks': [progress_hook],
-            'nocheckcertificate': True,
-            'quiet': True,
-            'no_warnings': True,
-            'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': preferred_codec,
-                'preferredquality': '192K',
-            }],
-            'postprocessor_args': {
-                'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
-            },
-            'verbose': True
-        }
-        ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
+            ydl_opts = {
+                'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
+                'format': 'bestaudio/best',
+                'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
+                'progress_hooks': [progress_hook],
+                'nocheckcertificate': True,
+                'quiet': True,
+                'no_warnings': True,
+                'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': preferred_codec,
+                    'preferredquality': '192K',
+                }],
+                'postprocessor_args': {
+                    'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
+                },
+                'verbose': True
+            }
+            ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
 
         logger.info(f"Starting download for {url} by user {user_id}")
         try:
