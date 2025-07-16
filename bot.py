@@ -1333,7 +1333,187 @@ async def copyright_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"User {user_id} issued /copyright command.")
     await update.message.reply_text(texts["copyright_command"])
 
+async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles inline queries for music search and download.
+    """
+    query = update.inline_query.query
+    user_id = update.inline_query.from_user.id
+    
+    if len(query) < 3:
+        # Показываем подсказку, если запрос слишком короткий
+        await update.inline_query.answer(
+            results=[
+                InlineQueryResultArticle(
+                    id="help",
+                    title="Введите минимум 3 символа",
+                    description="Например: The Weeknd - Starboy",
+                    input_message_content=InputTextMessageContent(
+                        message_text="Для поиска музыки введите минимум 3 символа"
+                    )
+                )
+            ],
+            cache_time=1
+        )
+        return
+    
+    logger.info(f"User {user_id} made inline query: {query}")
+    
+    # Показываем статус поиска
+    await update.inline_query.answer(
+        results=[
+            InlineQueryResultArticle(
+                id="searching",
+                title="🔍 Поиск...",
+                description=f"Ищем: {query}",
+                input_message_content=InputTextMessageContent(
+                    message_text="Выполняется поиск..."
+                )
+            )
+        ],
+        cache_time=1
+    )
+    
+    try:
+        results = await search_youtube(query)
+        logger.info(f"Search results for {query}: {len(results) if results else 0} items")
         
+        if not results or not isinstance(results, list):
+            await update.inline_query.answer(
+                results=[
+                    InlineQueryResultArticle(
+                        id="no_results",
+                        title="Ничего не найдено",
+                        description="Попробуйте другой запрос",
+                        input_message_content=InputTextMessageContent(
+                            message_text="По вашему запросу ничего не найдено"
+                        )
+                    )
+                ],
+                cache_time=300
+            )
+            return
+        inline_results = []
+        for idx, entry in enumerate(results[:5]):  # Limit to 5 results for better UX
+            try:
+                title = entry.get('title', 'Unknown Title')
+                video_id = entry.get('id')
+                thumbnails = entry.get('thumbnails', [])
+                thumbnail = thumbnails[0]['url'] if thumbnails else None
+                duration = entry.get('duration', 0)
+                
+                # Format duration
+                duration_str = f"{duration//60}:{duration%60:02d}" if duration else "Unknown"
+                
+                # Создаем более информативное описание
+                channel = entry.get('channel', 'Unknown Artist')
+                views = entry.get('view_count', 0)
+                views_str = f"{views:,}" if views else "Unknown"
+                
+                description = f"👤 {channel}\n⏱ {duration_str}\n👁 {views_str} views"
+                
+                result = InlineQueryResultArticle(
+                    id=video_id,
+                    title=title,
+                    description=description,
+                    thumb_url=thumbnail,
+                    input_message_content=InputTextMessageContent(
+                        message_text=f"🎵 {title}\n👤 {channel}\n⏱ Duration: {duration_str}\n\n⏳ Preparing download..."
+                    ),
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("⬇️ Download M4A", callback_data=f"idltype_audio_m4a_{user_id}_{video_id}")
+                    ]])
+                )
+                inline_results.append(result)
+                logger.info(f"Added result: {title} ({video_id})")
+            except Exception as e:
+                logger.error(f"Error processing search result: {e}")
+                continue
+        
+        if not inline_results:
+            # Если что-то пошло не так с обработкой результатов
+            await update.inline_query.answer([
+                InlineQueryResultArticle(
+                    id="error",
+                    title="Ошибка обработки результатов",
+                    description="Пожалуйста, попробуйте другой запрос",
+                    input_message_content=InputTextMessageContent(
+                        message_text="Произошла ошибка при обработке результатов поиска"
+                    )
+                )
+            ], cache_time=5)
+            return
+        
+        logger.info(f"Sending {len(inline_results)} results for query: {query}")
+        await update.inline_query.answer(inline_results, cache_time=300)
+        
+    except Exception as e:
+        logger.error(f"Error in inline search: {e}")
+        # Показываем ошибку пользователю
+        await update.inline_query.answer([
+            InlineQueryResultArticle(
+                id="error",
+                title="Произошла ошибка",
+                description="Пожалуйста, попробуйте позже",
+                input_message_content=InputTextMessageContent(
+                    message_text="Произошла ошибка при поиске. Пожалуйста, попробуйте позже."
+                )
+            )
+        ], cache_time=5)
+
+async def inline_download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles the download callback from inline query results.
+    """
+    query = update.callback_query
+    await query.answer()
+    
+    try:
+        _, dl_type, format_type, user_id, video_id = query.data.split("_")
+        user_id = int(user_id)
+        
+        if query.from_user.id != user_id:
+            await query.answer("This button is not for you.", show_alert=True)
+            return
+            
+        url = f"https://youtu.be/{video_id}"
+        lang = get_user_lang(user_id)
+        texts = LANGUAGES[lang]
+        
+        # Edit message to show download status
+        await query.edit_message_text(
+            text=query.message.text.split("\n\n")[0] + "\n\n⏳ Downloading...",
+            reply_markup=None
+        )
+        
+        # Start download task
+        active_downloads = context.user_data.setdefault('active_downloads', [])
+        active_downloads = [download for download in active_downloads if not download['task'].done()]
+        
+        if len(active_downloads) >= 3:
+            await query.edit_message_text(
+                text=query.message.text.split("\n\n")[0] + "\n\n❌ You have too many active downloads. Please wait."
+            )
+            return
+            
+        task = asyncio.create_task(
+            handle_download(query, context, url, texts, user_id, "audio_m4a")
+        )
+        
+        active_downloads.append({
+            'task': task,
+            'type': "audio_m4a",
+            'start_time': time.time()
+        })
+        context.user_data['active_downloads'] = active_downloads
+        
+    except Exception as e:
+        logger.error(f"Error in inline download callback: {e}")
+        await query.edit_message_text(
+            text=query.message.text.split("\n\n")[0] + "\n\n❌ Download failed. Please try again."
+        )
+
+def main():
     """
     Main function to run the bot.
     """
