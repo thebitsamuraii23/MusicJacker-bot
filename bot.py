@@ -47,6 +47,7 @@ load_dotenv()
 user_stats = {}  # user_id: {"downloads": int, "searches": int}
 
 
+import time
 from mutagen.id3 import ID3
 from mutagen.mp4 import MP4, MP4Cover
 from PIL import Image
@@ -291,7 +292,6 @@ LANGUAGES = {
             "🔗 Просто отправьте ссылку на видео или трек, и я помогу скачать аудио.\n"
             "\n🎵 Я также умею искать музыку по названию! Просто напишите /search.\n\n"
             f"📢 Для работы с ботом, подпишитесь на канал {REQUIRED_CHANNELS}.\n"
-            "\n💡 Веб-версия: youtubemusicdownloader.life (или bit.ly/ytmusicload)\n"
             "\n✨ Не забудьте подписаться на канал для обновлений и поддержки: @ytdlpdeveloper\n"
             "\n📝 Блог: https://artoflife2303.github.io/miniblog/\n"
             "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
@@ -338,7 +338,6 @@ LANGUAGES = {
             "🔗 Just send a YouTube or SoundCloud link (video or track) and I will help you download the audio.\n"
             "\n🎵 I can also search for music by name! Just type /search.\n\n"
             f"📢 To use the bot, please subscribe to the channel {REQUIRED_CHANNELS}.\n"
-            "\n💡 Web version: youtubemusicdownloader.life (or bit.ly/ytmusicload)\n"
             "\n✨ Don't forget to subscribe for updates and support: @ytdlpdeveloper\n"
             "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
             "\n💻 <a href=\"https://github.com/BitSamurai23/YTMusicDownloader\">GitHub: Open Source Code</a>"
@@ -385,7 +384,6 @@ LANGUAGES = {
             "🔗 Solo envía un enlace de YouTube o SoundCloud (video o pista) y te ayudaré a descargar el audio.\n"
             "\n🎵 ¡También puedo buscar música por nombre! Escribe /search.\n\n"
             f"📢 Para usar el bot, suscríbete al canal {REQUIRED_CHANNELS}.\n"
-            "\n💡 Versión web: youtubemusicdownloader.life (o bit.ly/ytmusicload)\n"
             "\n✨ No olvides suscribirte para actualizaciones y soporte: @ytdlpdeveloper\n"
             "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
             "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
@@ -432,7 +430,6 @@ LANGUAGES = {
             "🔗 Sadece bir YouTube veya SoundCloud bağlantısı gönderin (video veya parça), ses dosyasını indirmenize yardımcı olacağım.\n"
             "\n🎵 Ayrıca isimle müzik arayabilirim! Sadece /search yazın.\n\n"
             f"📢 Botu kullanmak için lütfen {REQUIRED_CHANNELS} kanalına abone olun.\n"
-            "\n💡 Web versiyonu: youtubemusicdownloader.life (veya bit.ly/ytmusicload)\n"
             "\n✨ Güncellemeler ve destek için abone olmayı unutmayın: @ytdlpdeveloper\n"
             "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
             "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
@@ -526,7 +523,6 @@ LANGUAGES = {
             "🔗 Sadəcə YouTube və ya SoundCloud linki göndərin (video və ya trek), səs faylını yükləməyə kömək edəcəyəm.\n"
             "\n🎵 Həmçinin adla musiqi axtara bilərəm! Sadəcə /search yazın.\n\n"
             f"📢 Botdan istifadə etmək üçün {REQUIRED_CHANNELS} kanalına abunə olun.\n"
-            "\n💡 Veb versiya: youtubemusicdownloader.life (və ya bit.ly/ytmusicload)\n"
             "\n✨ Yeniliklər və dəstək üçün kanala abunə olmağı unutmayın: @ytdlpdeveloper\n"
             "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
             "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
