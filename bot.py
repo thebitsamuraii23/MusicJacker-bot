@@ -780,6 +780,21 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                 'verbose': True
             }
             ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
+        elif download_type == "video_mp4":
+            ext_list = [".mp4"]
+            ydl_opts = {
+                'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
+                'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]',
+                'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
+                'progress_hooks': [progress_hook],
+                'nocheckcertificate': True,
+                'quiet': True,
+                'no_warnings': True,
+                'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
+                'merge_output_format': 'mp4',
+                'verbose': True
+            }
+            ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
 
         logger.info(f"Starting download for {url} by user {user_id}")
         try:
@@ -1037,6 +1052,87 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
         text=texts.get("choose_download_type", "Choose audio/video format:"),
         reply_markup=keyboard
     )
+
+async def search_youtube(query: str):
+    """
+    Performs a search for videos on YouTube.
+    """
+    if is_url(query):
+        return 'unsupported_url'
+
+    ydl_opts = {
+        'quiet': True,
+        'skip_download': True,
+        'extract_flat': True,
+        'nocheckcertificate': True,
+        'default_search': None,
+        'noplaylist': True
+    }
+    try:
+        search_query = f"ytsearch{SEARCH_RESULTS_LIMIT}:{query}"
+        logger.info(f"Searching YouTube for query: {query}")
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(search_query, download=False)
+            entries = info.get('entries', [])
+            if entries is None:
+                logger.info(f"No entries found for YouTube search: {query}")
+                return []
+            return entries[:SEARCH_RESULTS_LIMIT]
+    except yt_dlp.utils.DownloadError as e:
+        if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
+            logger.warning(f"Unsupported URL in search query: {query}")
+            return 'unsupported_url'
+        logger.error(f"DownloadError during YouTube search for {query}: {e}")
+        return []
+    except Exception as e:
+        logger.critical(f"Unhandled error during YouTube search for {query}: {e}", exc_info=True)
+        return []
+
+async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Processes the user's search query and displays the results.
+    """
+    if not context.user_data.get(f'awaiting_search_query_{update.effective_user.id}'):
+        logger.warning(f"User {update.effective_user.id} tried to search without awaiting query.")
+        await update.message.reply_text("Please start a search with /search first.")
+        return
+
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    query_text = update.message.text.strip()
+    logger.info(f"User {user_id} sent search query: '{query_text}'")
+
+    await update.message.reply_text(texts["searching"])
+    results = await search_youtube(query_text)
+
+    if results == 'unsupported_url':
+        await update.message.reply_text(texts["unsupported_url_in_search"])
+        context.user_data.pop(f'awaiting_search_query_{user_id}', None)
+        return
+
+    if not isinstance(results, list):
+        results = []
+
+    if not results:
+        await update.message.reply_text(texts["no_results"])
+        logger.info(f"User {user_id} search returned no results for query: '{query_text}'")
+        context.user_data.pop(f'awaiting_search_query_{user_id}', None)
+        return
+
+    keyboard = []
+    for idx, entry in enumerate(results):
+        title = entry.get('title', texts["no_results"])
+        video_id = entry.get('id')
+        keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{video_id}")])
+
+    await update.message.reply_text(
+        texts["choose_track"],
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
+    context.user_data.pop(f'awaiting_search_query_{user_id}', None)
+    logger.info(f"User {user_id} received {len(results)} search results.")
 
 def is_url(text):
     """
