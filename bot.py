@@ -36,8 +36,8 @@ import asyncio # Import asyncio for asynchronous operations
 import tempfile # Import tempfile for temporary file handling
 import shutil # Import shutil for file operations
 import json # Import json for handling JSON data
-from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand # Import necessary Telegram bot components 
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler # Import necessary Telegram bot handlers
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, InlineQueryResultArticle, InputTextMessageContent # Import necessary Telegram bot components 
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler, InlineQueryHandler # Import necessary Telegram bot handlers
 from dotenv import load_dotenv # Import dotenv for environment variable management 
 import yt_dlp # Import yt-dlp for downloading media
 
@@ -1379,6 +1379,103 @@ if __name__ == '__main__':
 
 # Thanks!
 
+
+async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles inline queries for music search and download.
+    """
+    query = update.inline_query.query
+    user_id = update.inline_query.from_user.id
+    
+    if len(query) < 3:
+        return
+    
+    logger.info(f"User {user_id} made inline query: {query}")
+    results = await search_youtube(query)
+    
+    if not results or not isinstance(results, list):
+        return
+    
+    inline_results = []
+    for idx, entry in enumerate(results[:5]):  # Limit to 5 results for better UX
+        title = entry.get('title', 'Unknown Title')
+        video_id = entry.get('id')
+        thumbnail = entry.get('thumbnail', '')
+        duration = entry.get('duration', 0)
+        
+        # Create unique callback data
+        callback_data = f"inline_{user_id}_{video_id}"
+        
+        # Format duration
+        duration_str = f"{duration//60}:{duration%60:02d}" if duration else "Unknown"
+        
+        result = InlineQueryResultArticle(
+            id=video_id,
+            title=title,
+            description=f"Duration: {duration_str}",
+            thumb_url=thumbnail,
+            input_message_content=InputTextMessageContent(
+                message_text=f"🎵 {title}\n⏱ Duration: {duration_str}\n\n🔄 Processing download..."
+            ),
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("Download M4A", callback_data=f"idltype_audio_m4a_{user_id}_{video_id}")
+            ]])
+        )
+        inline_results.append(result)
+    
+    await update.inline_query.answer(inline_results, cache_time=300)
+
+async def inline_download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles the download callback from inline query results.
+    """
+    query = update.callback_query
+    await query.answer()
+    
+    try:
+        _, dl_type, format_type, user_id, video_id = query.data.split("_")
+        user_id = int(user_id)
+        
+        if query.from_user.id != user_id:
+            await query.answer("This button is not for you.", show_alert=True)
+            return
+            
+        url = f"https://youtu.be/{video_id}"
+        lang = get_user_lang(user_id)
+        texts = LANGUAGES[lang]
+        
+        # Edit message to show download status
+        await query.edit_message_text(
+            text=query.message.text.split("\n\n")[0] + "\n\n⏳ Downloading...",
+            reply_markup=None
+        )
+        
+        # Start download task
+        active_downloads = context.user_data.setdefault('active_downloads', [])
+        active_downloads = [download for download in active_downloads if not download['task'].done()]
+        
+        if len(active_downloads) >= 3:
+            await query.edit_message_text(
+                text=query.message.text.split("\n\n")[0] + "\n\n❌ You have too many active downloads. Please wait."
+            )
+            return
+            
+        task = asyncio.create_task(
+            handle_download(query, context, url, texts, user_id, "audio_m4a")
+        )
+        
+        active_downloads.append({
+            'task': task,
+            'type': "audio_m4a",
+            'start_time': time.time()
+        })
+        context.user_data['active_downloads'] = active_downloads
+        
+    except Exception as e:
+        logger.error(f"Error in inline download callback: {e}")
+        await query.edit_message_text(
+            text=query.message.text.split("\n\n")[0] + "\n\n❌ Download failed. Please try again."
+        )
 
 # If you have any guestions about how code works & more. Text: copyrightytdlpbot@gmail.com
 # Telegram bot link: t.me/ytdlpload_bot
