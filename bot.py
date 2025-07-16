@@ -84,6 +84,18 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(texts["search_prompt"])
     context.user_data[f'awaiting_search_query_{user_id}'] = True
 
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles the /stats command and sends user statistics.
+    """
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    stats = user_stats.get(user_id, {"downloads": 0, "searches": 0})
+    await update.message.reply_text(
+        f"📊 Ваша статистика:\nСкачиваний: {stats['downloads']}\nПоисков: {stats['searches']}"
+    )
+
 def main():
     import logging
     load_dotenv() 
