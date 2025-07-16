@@ -133,6 +133,7 @@ def main():
     app.add_handler(CommandHandler("search", search_command))
     app.add_handler(CommandHandler("copyright", copyright_command))
     app.add_handler(CommandHandler("stats", stats_command))
+    app.add_handler(InlineQueryHandler(inline_query_handler))
 
     app.add_handler(MessageHandler(filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"), set_language))
     app.add_handler(CallbackQueryHandler(select_download_type_callback, pattern="^dltype_"))
