@@ -824,7 +824,11 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         for file_name in all_temp_files:
             file_path = os.path.join(temp_dir, file_name)
             file_ext_lower = os.path.splitext(file_name)[1].lower()
-            base_title = os.path.splitext(file_name.split(" [")[0])[0]
+            # Сохраняем полное название, только убираем расширение и ID в конце
+            base_title = file_name
+            if " [" in base_title:
+                base_title = base_title.split(" [")[0]  # Убираем ID видео
+            base_title = os.path.splitext(base_title)[0]  # Убираем расширение
             if file_ext_lower in ext_list:
                 downloaded_files_info.append((file_path, base_title))
 
