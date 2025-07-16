@@ -185,7 +185,6 @@ LANGUAGES = {
             "🔗 Just send a YouTube or SoundCloud link (video or track) and I will help you download the audio.\n"
             "\n🎵 I can also search for music by name! Just type /search.\n\n"
             f"📢 To use the bot, please subscribe to the channel {REQUIRED_CHANNELS}.\n"
-            "\n💡 Web version: youtubemusicdownloader.life (or bit.ly/ytmusicload)\n"
             "\n✨ Don't forget to subscribe for updates and support: @ytdlpdeveloper\n"
             "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
             "\n💻 <a href=\"https://github.com/BitSamurai23/YTMusicDownloader\">GitHub: Open Source Code</a>"
