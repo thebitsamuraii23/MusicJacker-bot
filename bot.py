@@ -126,7 +126,7 @@ LANG_KEYBOARD = ReplyKeyboardMarkup(
     one_time_keyboard=True
 )
 LANG_CODES = {
-    "Русский": "ru", "English": "en", "Español": "es",
+    "Русский": "ru", "English": "en", "Españол": "es",
     "Azərbaycan dili": "az", "Türkçe": "tr", "Українська": "uk",
     "العربية": "ar"
 }
@@ -422,7 +422,7 @@ LANGUAGES = {
         "already_cancelled_or_done": "İndirme zaten iptal edildi veya tamamlandı.",
         "url_error_generic": "URL işlenemedi. Geçerli bir YouTube veya SoundCloud bağlantısı olduğundan emin olun.",
         "search_prompt": (
-            "Parça adı veya sanatçı adı girin. Ardından müziğe tıklayın, MP3 formatında indirilecektir.\n"
+            "Parça adı veya sanatçı adı girin. Ardından müziyə tıklayın, MP3 formatında indirilecektir.\n"
             "Aramayı iptal etmek için /cancel yazın.\n"
             "Müzik adıyla arama yapmak için /search yazın (YouTube)."
         ),
@@ -517,17 +517,17 @@ LANGUAGES = {
         "url_error_generic": "URL emal edilə bilmədi. Etibarlı bir YouTube və ya SoundCloud linki olduğundan əmin olun.",
         "search_prompt": (
             "Trek adı və ya ifaçı adı daxil edin. Sonra musiqiyə tıklayın, MP3 formatında yüklənəcək.\n"
-            "/cancel daxil edərək axtarışı ləğv edin.\n"
-            "/search daxil edərək adla musiqi axtarın (YouTube)."
+            "Aramayı iptal etmək üçün /cancel yazın.\n"
+            "Müzik adıyla arama yapmak için /search yazın (YouTube)."
         ),
         "searching": "Musiqi axtarılır...",
-        "unsupported_url_in_search": "Link dəstəklənmir. Zəhmət olmasa, linki yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
+        "unsupported_url_in_search": "Bağlantı desteklenmir. Zəhmət olmasa, bağlantını yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
         "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
         "choose_track": "MP3 olaraq yükləmək üçün bir trek seçin:",
         "downloading_selected_track": "Seçilən trek MP3 olaraq yüklənir...",
         "copyright_pre": "⚠️ Diqqət! Yüklədiyiniz material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
         "copyright_post": "⚠️ Bu material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
-        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
+        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
     },
 }
 
@@ -896,19 +896,27 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
     logger.info(f"User {user_id} selected download type: {query.data}")
     try:
         parts = query.data.split("_")
-        if len(parts) != 4 or parts[0] != "dltype" or (parts[1] != "audio"):
-            raise ValueError("Incorrect callback_data format for audio")
+        if len(parts) != 4 or parts[0] != "dltype" or (parts[1] not in ("audio", "video")):
+            raise ValueError("Incorrect callback_data format for audio/video")
         specific_format = parts[2]
         user_id_from_callback = int(parts[3])
 
-        if specific_format == "mp3":
-            download_type_for_handler = "audio_mp3"
-        elif specific_format == "sc":
-            download_type_for_handler = "audio_sc"
-        elif specific_format == "m4a":
-            download_type_for_handler = "audio_m4a"
+        if parts[1] == "audio":
+            if specific_format == "mp3":
+                download_type_for_handler = "audio_mp3"
+            elif specific_format == "sc":
+                download_type_for_handler = "audio_sc"
+            elif specific_format == "m4a":
+                download_type_for_handler = "audio_m4a"
+            else:
+                raise ValueError("Unknown download type")
+        elif parts[1] == "video":
+            if specific_format == "mp4":
+                download_type_for_handler = "video_mp4"
+            else:
+                raise ValueError("Unknown video download type")
         else:
-            raise ValueError("Unknown download type")
+            raise ValueError("Unknown callback type")
 
     except (IndexError, ValueError) as e:
         logger.error(f"Error parsing callback_data for user {user_id}: {e} - Data: {query.data}")
@@ -939,137 +947,6 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
     task = asyncio.create_task(handle_download(query, context, url_to_download, texts, requesting_user_id, download_type_for_handler))
     active_downloads = context.bot_data.setdefault('active_downloads', {})
     active_downloads[requesting_user_id] = {'task': task}
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles the /stats command and sends user statistics.
-    """
-    user_id = update.effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    stats = user_stats.get(user_id, {"downloads": 0, "searches": 0})
-    await update.message.reply_text(
-        f"📊 Ваша статистика:\nСкачиваний: {stats['downloads']}\nПоисков: {stats['searches']}"
-    )
-
-async def search_youtube(query: str):
-    """
-    Performs a search for videos on YouTube.
-    """
-    if is_url(query):
-        return 'unsupported_url'
-
-    ydl_opts = {
-        'quiet': True, # Disable output messages.
-        'skip_download': True, # Skip download.
-        'extract_flat': True, # Extract only flat info list.
-        'nocheckcertificate': True, # Do not check SSL certificates.
-        'default_search': None, # Disable default search to control it.
-        'noplaylist': True # Do not extract playlists.
-    }
-    try:
-        # Search for top 10 results.
-        search_query = f"ytsearch{SEARCH_RESULTS_LIMIT}:{query}"
-        logger.info(f"Searching YouTube for query: {query}")
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(search_query, download=False)
-            entries = info.get('entries', [])
-            if entries is None:
-                logger.info(f"No entries found for YouTube search: {query}")
-                return [] # Return empty list if entries is None.
-            return entries[:SEARCH_RESULTS_LIMIT]
-    except yt_dlp.utils.DownloadError as e:
-        if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
-            logger.warning(f"Unsupported URL in search query: {query}")
-            return 'unsupported_url'
-        logger.error(f"DownloadError during YouTube search for {query}: {e}")
-        return []
-    except Exception as e:
-        logger.critical(f"Unhandled error during YouTube search for {query}: {e}", exc_info=True)
-        return []
-
-def is_url(text):
-    """
-    Checks if a string is a YouTube or SoundCloud URL.
-    """
-    text = text.lower().strip()
-    return (
-        text.startswith("http://") or text.startswith("https://")
-    ) and (
-        "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
-    )
-
-async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Starts the music search process.
-    """
-    import time
-    user_id = update.effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    logger.info(f"User {user_id} issued /search command.") 
-
-    # --- Таймаут между поисками ---
-    global user_last_search_time
-    now = time.time()
-    search_cooldown = 5  # секунд
-    last_search = user_last_search_time.get(user_id, 0)
-    if now - last_search < search_cooldown:
-        wait_sec = int(search_cooldown - (now - last_search))
-        try:
-            await update.message.reply_text(f"⏳ Пожалуйста, подождите {wait_sec} сек. перед следующим поиском.")
-        except Exception:
-            pass
-        return
-    user_last_search_time[user_id] = now
-
-    await update.message.reply_text(texts["search_prompt"])
-    context.user_data[f'awaiting_search_query_{user_id}'] = True
-
-async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Processes the user's search query and displays the results.
-""" # Handles the search query after /search command.       
-    if not context.user_data.get(f'awaiting_search_query_{update.effective_user.id}'):
-        logger.warning(f"User {update.effective_user.id} tried to search without awaiting query.")
-        await update.message.reply_text("Please start a search with /search first.")
-        return
-    user_id = update.effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    query_text = update.message.text.strip()
-    logger.info(f"User {user_id} sent search query: '{query_text}'")
-
-    await update.message.reply_text(texts["searching"])
-    results = await search_youtube(query_text)
-
-    if results == 'unsupported_url':
-        await update.message.reply_text(texts["unsupported_url_in_search"])
-        context.user_data.pop(f'awaiting_search_query_{user_id}', None) # Reset awaiting query flag.
-        return
-
-    if not isinstance(results, list): # Check that results is a list.
-        results = [] # If not a list, set results to empty list.
-
-    if not results: # If no results found.
-        await update.message.reply_text(texts["no_results"]) # Send no results message.
-        logger.info(f"User {user_id} search returned no results for query: '{query_text}'")
-        context.user_data.pop(f'awaiting_search_query_{user_id}', None)
-        return
-
-    keyboard = []
-    for idx, entry in enumerate(results):
-        title = entry.get('title', texts["no_results"])
-        video_id = entry.get('id')
-        keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{video_id}")])
-
-    await update.message.reply_text(
-        texts["choose_track"],
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-    # Save search results for later selection.
-    context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
-    context.user_data.pop(f'awaiting_search_query_{user_id}', None) # Reset awaiting query flag.
-    logger.info(f"User {user_id} received {len(results)} search results.")
 
 async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -1101,23 +978,24 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     # Store the URL for the next step (format selection)
     context.user_data[f'url_for_download_{user_id}'] = url
 
-    # Send copyright warning and ask for format (MP3/M4A)
+    # Send copyright warning and ask for format (MP3/M4A/MP4)
     try:
         await query.edit_message_text(texts.get("copyright_pre"))
     except Exception as e:
         logger.debug(f"Could not edit copyright warning: {e}")
         pass
 
-    # Allow both mp3 and m4a for YouTube
+    # Show all three buttons for YouTube
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("🎵 MP3 (YouTube)", callback_data=f"dltype_audio_mp3_{user_id}"),
-            InlineKeyboardButton("🎵 M4A (YouTube)", callback_data=f"dltype_audio_m4a_{user_id}")
+            InlineKeyboardButton("🎵 M4A (YouTube)", callback_data=f"dltype_audio_m4a_{user_id}"),
+            InlineKeyboardButton("📹 MP4 720p (YouTube)", callback_data=f"dltype_video_mp4_{user_id}")
         ]
     ])
     await context.bot.send_message(
         chat_id=user_id,
-        text=texts.get("choose_download_type", "Choose audio format:"),
+        text=texts.get("choose_download_type", "Choose audio/video format:"),
         reply_markup=keyboard
     )
 
