@@ -1038,9 +1038,25 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
         logger.debug(f"Could not remove reply markup: {e}")
         pass
 
+    # Инициализация и очистка списка активных загрузок пользователя
+    active_downloads = context.user_data.setdefault('active_downloads', [])
+    active_downloads = [download for download in active_downloads if not download['task'].done()]
+    
+    # Проверка лимита одновременных загрузок
+    if len(active_downloads) >= 3:
+        await query.edit_message_text("У вас уже есть 3 активные загрузки. Пожалуйста, дождитесь их завершения.")
+        return
+    
+    # Создание новой задачи загрузки
     task = asyncio.create_task(handle_download(query, context, url_to_download, texts, requesting_user_id, download_type_for_handler))
-    active_downloads = context.bot_data.setdefault('active_downloads', {})
-    active_downloads[requesting_user_id] = {'task': task}
+    
+    # Добавление новой задачи в список активных загрузок
+    active_downloads.append({
+        'task': task,
+        'type': download_type_for_handler,
+        'start_time': time.time()
+    })
+    context.user_data['active_downloads'] = active_downloads
 
 async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -1201,9 +1217,15 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     text = update.message.text.strip()
     logger.info(f"User {user_id} sent message: '{text}'")
 
-    active_downloads = context.bot_data.setdefault('active_downloads', {})
-    if user_id in active_downloads and active_downloads[user_id].get('task') and not active_downloads[user_id]['task'].done():
-        await update.message.reply_text(texts["download_in_progress"])
+    # Проверяем только активные загрузки текущего пользователя
+    active_downloads = context.user_data.setdefault('active_downloads', [])
+    # Очищаем завершенные загрузки
+    active_downloads = [download for download in active_downloads if not download['task'].done()]
+    context.user_data['active_downloads'] = active_downloads
+    
+    # Ограничиваем количество одновременных загрузок для одного пользователя
+    if len(active_downloads) >= 3:  # Максимум 3 одновременные загрузки для одного пользователя
+        await update.message.reply_text("У вас уже есть 3 активные загрузки. Пожалуйста, дождитесь их завершения.")
         return
 
     # Check subscription before any message processing.
