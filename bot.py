@@ -756,45 +756,58 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
 
         status_message = await context.bot.send_message(chat_id=chat_id, text=texts["downloading_audio"], reply_markup=cancel_keyboard)
         temp_dir = tempfile.mkdtemp()
-        # Формат скачивания
+        # Установка базовых настроек для всех форматов
+        ydl_opts = {
+            'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
+            'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
+            'progress_hooks': [progress_hook],
+            'nocheckcertificate': True,
+            'quiet': True,
+            'no_warnings': True,
+            'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
+            'verbose': True
+        }
+
+        # Настройки в зависимости от формата
         if download_type == "audio_mp3" or download_type == "audio_sc":
-            preferred_codec = "mp3"
             ext_list = [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]
-            ydl_opts = {
-                'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
+            ydl_opts.update({
                 'format': 'bestaudio/best',
-                'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
-                'progress_hooks': [progress_hook],
-                'nocheckcertificate': True,
-                'quiet': True,
-                'no_warnings': True,
-                'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
-                    'preferredcodec': preferred_codec,
+                    'preferredcodec': 'mp3',
                     'preferredquality': '192K',
                 }],
                 'postprocessor_args': {
                     'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
-                },
-                'verbose': True
-            }
-            ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
+                }
+            })
+        elif download_type == "audio_m4a":
+            ext_list = [".m4a", ".mp3", ".webm", ".ogg", ".opus", ".aac"]
+            ydl_opts.update({
+                'format': 'bestaudio/best',
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'm4a',
+                    'preferredquality': '192K',
+                }],
+                'postprocessor_args': {
+                    'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
+                }
+            })
         elif download_type == "video_mp4":
             ext_list = [".mp4"]
-            ydl_opts = {
-                'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
+            ydl_opts.update({
                 'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]',
-                'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
-                'progress_hooks': [progress_hook],
-                'nocheckcertificate': True,
-                'quiet': True,
-                'no_warnings': True,
-                'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
                 'merge_output_format': 'mp4',
-                'verbose': True
-            }
-            ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
+                'postprocessors': [{
+                    'key': 'FFmpegVideoRemuxer',
+                    'preferedformat': 'mp4'
+                }]
+            })
+        
+        # Удаление None значений из опций
+        ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
 
         logger.info(f"Starting download for {url} by user {user_id}")
         try:
@@ -875,22 +888,45 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                     logger.debug(f"Error compressing cover: {e}")
                     thumb_bytes = None
 
-            # --- Отправка аудио с обложкой ---
+            # --- Отправка аудио или видео с обложкой ---
             try:
                 with open(file_to_send, 'rb') as f_send:
-                    if thumb_bytes:
-                        image = io.BytesIO(thumb_bytes)
-                        image.name = 'cover.jpg'
-                        await context.bot.send_audio(
-                            chat_id=chat_id, audio=f_send, title=title_str,
-                            filename=os.path.basename(file_to_send),
-                            thumbnail=image
-                        )
+                    if download_type == "video_mp4":
+                        if thumb_bytes:
+                            image = io.BytesIO(thumb_bytes)
+                            image.name = 'thumbnail.jpg'
+                            await context.bot.send_video(
+                                chat_id=chat_id,
+                                video=f_send,
+                                caption=title_str,
+                                filename=os.path.basename(file_to_send),
+                                thumbnail=image
+                            )
+                        else:
+                            await context.bot.send_video(
+                                chat_id=chat_id,
+                                video=f_send,
+                                caption=title_str,
+                                filename=os.path.basename(file_to_send)
+                            )
                     else:
-                        await context.bot.send_audio(
-                            chat_id=chat_id, audio=f_send, title=title_str,
-                            filename=os.path.basename(file_to_send)
-                        )
+                        if thumb_bytes:
+                            image = io.BytesIO(thumb_bytes)
+                            image.name = 'cover.jpg'
+                            await context.bot.send_audio(
+                                chat_id=chat_id,
+                                audio=f_send,
+                                title=title_str,
+                                filename=os.path.basename(file_to_send),
+                                thumbnail=image
+                            )
+                        else:
+                            await context.bot.send_audio(
+                                chat_id=chat_id,
+                                audio=f_send,
+                                title=title_str,
+                                filename=os.path.basename(file_to_send)
+                            )
                 await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
                 await context.bot.send_message(chat_id=chat_id, text="💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader")
                 logger.info(f"Successfully sent audio for {url} to user {user_id}")
