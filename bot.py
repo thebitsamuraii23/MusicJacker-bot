@@ -773,14 +773,22 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         temp_dir = tempfile.mkdtemp()
         # Установка базовых настроек для всех форматов
         ydl_opts = {
-            'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
+            'outtmpl': os.path.join(temp_dir, '%(artist,uploader,channel)s - %(title)s.%(ext)s'),
             'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
             'progress_hooks': [progress_hook],
             'nocheckcertificate': True,
             'quiet': True,
             'no_warnings': True,
             'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
-            'verbose': True
+            'verbose': True,
+            'writethumbnail': True,
+            'embedthumbnail': True,
+            'addmetadata': True,
+            'writeinfojson': True,
+            'postprocessor_args': [
+                '-metadata', 'title=%(title)s',
+                '-metadata', 'artist=%(artist,uploader,channel)s'
+            ]
         }
 
         # Настройки в зависимости от формата
@@ -788,37 +796,81 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             ext_list = [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]
             ydl_opts.update({
                 'format': 'bestaudio/best',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192K',
-                }],
-                'postprocessor_args': {
-                    'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
-                }
+                'postprocessors': [
+                    {
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    },
+                    {
+                        'key': 'FFmpegMetadata',
+                        'add_metadata': True,
+                    },
+                    {
+                        'key': 'EmbedThumbnail',
+                    }
+                ],
+                'postprocessor_args': [
+                    '-acodec', 'libmp3lame', 
+                    '-ar', '48000',
+                    '-b:a', '192k',
+                    '-ac', '2',
+                    '-id3v2_version', '3',
+                    '-metadata', 'title=%(title)s',
+                    '-metadata', 'artist=%(artist,uploader,channel)s'
+                ]
             })
         elif download_type == "audio_m4a":
             ext_list = [".m4a", ".mp3", ".webm", ".ogg", ".opus", ".aac"]
             ydl_opts.update({
-                'format': 'bestaudio/best',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'm4a',
-                    'preferredquality': '192K',
-                }],
-                'postprocessor_args': {
-                    'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
-                }
+                'format': 'bestaudio[ext=m4a]/bestaudio/best',
+                'postprocessors': [
+                    {
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'm4a',
+                        'preferredquality': '192',
+                    },
+                    {
+                        'key': 'FFmpegMetadata',
+                        'add_metadata': True,
+                    },
+                    {
+                        'key': 'EmbedThumbnail',
+                    }
+                ],
+                'postprocessor_args': [
+                    '-acodec', 'aac',
+                    '-ar', '48000', 
+                    '-b:a', '192k',
+                    '-ac', '2',
+                    '-movflags', '+faststart',
+                    '-metadata', 'title=%(title)s',
+                    '-metadata', 'artist=%(artist,uploader,channel)s'
+                ]
             })
         elif download_type == "video_mp4":
             ext_list = [".mp4"]
             ydl_opts.update({
                 'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]',
                 'merge_output_format': 'mp4',
-                'postprocessors': [{
-                    'key': 'FFmpegVideoRemuxer',
-                    'preferedformat': 'mp4'
-                }]
+                'postprocessors': [
+                    {
+                        'key': 'FFmpegVideoConvertor',
+                        'preferedformat': 'mp4'
+                    },
+                    {
+                        'key': 'FFmpegMetadata',
+                        'add_metadata': True,
+                    },
+                    {
+                        'key': 'EmbedThumbnail',
+                    }
+                ],
+                'postprocessor_args': [
+                    '-movflags', '+faststart',
+                    '-metadata', 'title=%(title)s',
+                    '-metadata', 'artist=%(artist,uploader,channel)s'
+                ]
             })
         
         # Удаление None значений из опций
@@ -1332,13 +1384,6 @@ async def copyright_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texts = LANGUAGES[lang]
     logger.info(f"User {user_id} issued /copyright command.")
     await update.message.reply_text(texts["copyright_command"])
-
-async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles inline queries for music search and download.
-    """
-    query = update.inline_query.query
-    user_id = update.inline_query.from_user.id
     
     if len(query) < 3:
         # Показываем подсказку, если запрос слишком короткий
@@ -1578,187 +1623,3 @@ if __name__ == '__main__':
 # Developed and made by BitSamurai.
 
 # Thanks!
-
-
-async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles inline queries for music search and download.
-    """
-    query = update.inline_query.query
-    user_id = update.inline_query.from_user.id
-    
-    if len(query) < 3:
-        # Показываем подсказку, если запрос слишком короткий
-        await update.inline_query.answer(
-            results=[
-                InlineQueryResultArticle(
-                    id="help",
-                    title="Введите минимум 3 символа",
-                    description="Например: The Weeknd - Starboy",
-                    input_message_content=InputTextMessageContent(
-                        message_text="Для поиска музыки введите минимум 3 символа"
-                    )
-                )
-            ],
-            cache_time=1
-        )
-        return
-    
-    logger.info(f"User {user_id} made inline query: {query}")
-    
-    # Показываем статус поиска
-    await update.inline_query.answer(
-        results=[
-            InlineQueryResultArticle(
-                id="searching",
-                title="🔍 Поиск...",
-                description=f"Ищем: {query}",
-                input_message_content=InputTextMessageContent(
-                    message_text="Выполняется поиск..."
-                )
-            )
-        ],
-        cache_time=1
-    )
-    
-    try:
-        results = await search_youtube(query)
-        logger.info(f"Search results for {query}: {len(results) if results else 0} items")
-        
-        if not results or not isinstance(results, list):
-            await update.inline_query.answer(
-                results=[
-                    InlineQueryResultArticle(
-                        id="no_results",
-                        title="Ничего не найдено",
-                        description="Попробуйте другой запрос",
-                        input_message_content=InputTextMessageContent(
-                            message_text="По вашему запросу ничего не найдено"
-                        )
-                    )
-                ],
-                cache_time=300
-            )
-            return
-        inline_results = []
-        for idx, entry in enumerate(results[:5]):  # Limit to 5 results for better UX
-            try:
-                title = entry.get('title', 'Unknown Title')
-                video_id = entry.get('id')
-                thumbnails = entry.get('thumbnails', [])
-                thumbnail = thumbnails[0]['url'] if thumbnails else None
-                duration = entry.get('duration', 0)
-                
-                # Format duration
-                duration_str = f"{duration//60}:{duration%60:02d}" if duration else "Unknown"
-                
-                # Создаем более информативное описание
-                channel = entry.get('channel', 'Unknown Artist')
-                views = entry.get('view_count', 0)
-                views_str = f"{views:,}" if views else "Unknown"
-                
-                description = f"👤 {channel}\n⏱ {duration_str}\n👁 {views_str} views"
-                
-                result = InlineQueryResultArticle(
-                    id=video_id,
-                    title=title,
-                    description=description,
-                    thumb_url=thumbnail,
-                    input_message_content=InputTextMessageContent(
-                        message_text=f"🎵 {title}\n👤 {channel}\n⏱ Duration: {duration_str}\n\n⏳ Preparing download..."
-                    ),
-                    reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton("⬇️ Download M4A", callback_data=f"idltype_audio_m4a_{user_id}_{video_id}")
-                    ]])
-                )
-                inline_results.append(result)
-                logger.info(f"Added result: {title} ({video_id})")
-            except Exception as e:
-                logger.error(f"Error processing search result: {e}")
-                continue
-        
-        if not inline_results:
-            # Если что-то пошло не так с обработкой результатов
-            await update.inline_query.answer([
-                InlineQueryResultArticle(
-                    id="error",
-                    title="Ошибка обработки результатов",
-                    description="Пожалуйста, попробуйте другой запрос",
-                    input_message_content=InputTextMessageContent(
-                        message_text="Произошла ошибка при обработке результатов поиска"
-                    )
-                )
-            ], cache_time=5)
-            return
-        
-        logger.info(f"Sending {len(inline_results)} results for query: {query}")
-        await update.inline_query.answer(inline_results, cache_time=300)
-        
-    except Exception as e:
-        logger.error(f"Error in inline search: {e}")
-        # Показываем ошибку пользователю
-        await update.inline_query.answer([
-            InlineQueryResultArticle(
-                id="error",
-                title="Произошла ошибка",
-                description="Пожалуйста, попробуйте позже",
-                input_message_content=InputTextMessageContent(
-                    message_text="Произошла ошибка при поиске. Пожалуйста, попробуйте позже."
-                )
-            )
-        ], cache_time=5)
-
-async def inline_download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles the download callback from inline query results.
-    """
-    query = update.callback_query
-    await query.answer()
-    
-    try:
-        _, dl_type, format_type, user_id, video_id = query.data.split("_")
-        user_id = int(user_id)
-        
-        if query.from_user.id != user_id:
-            await query.answer("This button is not for you.", show_alert=True)
-            return
-            
-        url = f"https://youtu.be/{video_id}"
-        lang = get_user_lang(user_id)
-        texts = LANGUAGES[lang]
-        
-        # Edit message to show download status
-        await query.edit_message_text(
-            text=query.message.text.split("\n\n")[0] + "\n\n⏳ Downloading...",
-            reply_markup=None
-        )
-        
-        # Start download task
-        active_downloads = context.user_data.setdefault('active_downloads', [])
-        active_downloads = [download for download in active_downloads if not download['task'].done()]
-        
-        if len(active_downloads) >= 3:
-            await query.edit_message_text(
-                text=query.message.text.split("\n\n")[0] + "\n\n❌ You have too many active downloads. Please wait."
-            )
-            return
-            
-        task = asyncio.create_task(
-            handle_download(query, context, url, texts, user_id, "audio_m4a")
-        )
-        
-        active_downloads.append({
-            'task': task,
-            'type': "audio_m4a",
-            'start_time': time.time()
-        })
-        context.user_data['active_downloads'] = active_downloads
-        
-    except Exception as e:
-        logger.error(f"Error in inline download callback: {e}")
-        await query.edit_message_text(
-            text=query.message.text.split("\n\n")[0] + "\n\n❌ Download failed. Please try again."
-        )
-
-# If you have any guestions about how code works & more. Text: copyrightytdlpbot@gmail.com
-# Telegram bot link: t.me/ytdlpload_bot
