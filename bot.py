@@ -799,7 +799,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                     {
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'mp3',
-                        'preferredquality': '192',
+                        'preferredquality': '320',
                     },
                     {
                         'key': 'FFmpegMetadata',
@@ -812,8 +812,9 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                 'postprocessor_args': [
                     '-acodec', 'libmp3lame', 
                     '-ar', '48000',
-                    '-b:a', '192k',
+                    '-b:a', '320k',
                     '-ac', '2',
+                    '-compression_level', '0',
                     '-id3v2_version', '3',
                     '-metadata', 'title=%(title)s',
                     '-metadata', 'artist=%(artist,uploader,channel)s'
@@ -827,7 +828,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                     {
                         'key': 'FFmpegExtractAudio',
                         'preferredcodec': 'm4a',
-                        'preferredquality': '192',
+                        'preferredquality': '320',
                     },
                     {
                         'key': 'FFmpegMetadata',
@@ -840,8 +841,9 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                 'postprocessor_args': [
                     '-acodec', 'aac',
                     '-ar', '48000', 
-                    '-b:a', '192k',
+                    '-b:a', '320k',
                     '-ac', '2',
+                    '-q:a', '0',
                     '-movflags', '+faststart',
                     '-metadata', 'title=%(title)s',
                     '-metadata', 'artist=%(artist,uploader,channel)s'
@@ -866,6 +868,13 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                     }
                 ],
                 'postprocessor_args': [
+                    '-c:v', 'libx264',
+                    '-crf', '18',
+                    '-preset', 'slow',
+                    '-c:a', 'aac',
+                    '-b:a', '320k',
+                    '-ar', '48000',
+                    '-ac', '2',
                     '-movflags', '+faststart',
                     '-metadata', 'title=%(title)s',
                     '-metadata', 'artist=%(artist,uploader,channel)s'
