@@ -772,7 +772,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         temp_dir = tempfile.mkdtemp()
         # Установка базовых настроек для всех форматов
         ydl_opts = {
-            'outtmpl': os.path.join(temp_dir, '%(artist,uploader,channel)s - %(title)s.%(ext)s'),
+            'outtmpl': os.path.join(temp_dir, '%(artist,uploader,channel)s - %(title)s [Made by @ytdlpload_bot].%(ext)s'),
             'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
             'progress_hooks': [progress_hook],
             'nocheckcertificate': True,
@@ -1007,6 +1007,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                                 filename=os.path.basename(file_to_send)
                             )
                 await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
+                await context.bot.send_message(chat_id=chat_id, text="Made by @ytdlpload_bot")
                 await context.bot.send_message(chat_id=chat_id, text="💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader")
                 logger.info(f"Successfully sent audio for {url} to user {user_id}")
             except Exception as e:
