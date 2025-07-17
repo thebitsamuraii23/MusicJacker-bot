@@ -726,16 +726,6 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
     global user_last_download_time
     now = time.time()
     cooldown = 15  # секунд
-    # Отключаем лимит для пользователя 7009242731
-    if user_id != 7009242731:
-        last_time = user_last_download_time.get(user_id, 0)
-        if now - last_time < cooldown:
-            wait_sec = int(cooldown - (now - last_time))
-            try:
-                await context.bot.send_message(chat_id=chat_id, text=f"⏳ Пожалуйста, подождите {wait_sec} сек. перед следующим скачиванием.")
-            except Exception:
-                pass
-            return
 
     async def update_status_message_async(text_to_update, show_cancel_button=True):
         """
@@ -762,7 +752,21 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             asyncio.run_coroutine_threadsafe(update_status_message_async(progress_text), loop)
 
     try:
-        # Сохраняем время начала скачивания (чтобы не было параллельных попыток)
+        # Проверка таймаута между скачиваниями
+        last_time = user_last_download_time.get(user_id, 0)
+        if now - last_time < cooldown and user_id != 7009242731:
+            wait_sec = int(cooldown - (now - last_time))
+            await context.bot.send_message(chat_id=chat_id, text=f"⏳ Пожалуйста, подождите {wait_sec} сек. перед следующим скачиванием.")
+            return
+
+        # Проверка количества активных загрузок для пользователя
+        active_downloads = context.user_data.setdefault('active_downloads', [])
+        active_downloads = [download for download in active_downloads if not download['task'].done()]
+        if len(active_downloads) >= 3 and user_id != 7009242731:
+            await context.bot.send_message(chat_id=chat_id, text="У вас уже есть 3 активные загрузки. Пожалуйста, дождитесь их завершения.")
+            return
+
+        # Сохраняем время начала скачивания
         user_last_download_time[user_id] = now
         # Статистика
         user_stats.setdefault(user_id, {"downloads": 0, "searches": 0})
@@ -1044,15 +1048,24 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         else:
             await context.bot.send_message(chat_id=chat_id, text=texts["error"] + str(e))
     finally:
-        # Clean up temporary files and remove active download status.
+        # Clean up temporary files
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir, ignore_errors=True)
             logger.info(f"Cleaned up temporary directory {temp_dir} for user {user_id}.")
-        if user_id in active_downloads:
-            del active_downloads[user_id]
-            logger.info(f"Removed active download for user {user_id}.")
+
+        # Удаляем текущую задачу из списка активных загрузок
+        active_downloads = context.user_data.get('active_downloads', [])
+        current_task = None
+        for download in active_downloads:
+            if download['task'].done():
+                current_task = download
+                break
+        if current_task:
+            active_downloads.remove(current_task)
+            context.user_data['active_downloads'] = active_downloads
+            logger.info(f"Removed completed download task for user {user_id}")
+
         # Обновляем время последнего скачивания только если не было ошибки
-        # (чтобы не блокировать пользователя из-за ошибки)
         if 'now' in locals() and 'e' not in locals():
             user_last_download_time[user_id] = time.time()
 
