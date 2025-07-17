@@ -133,7 +133,6 @@ def main():
     app.add_handler(CommandHandler("search", search_command))
     app.add_handler(CommandHandler("copyright", copyright_command))
     app.add_handler(CommandHandler("stats", stats_command))
-    app.add_handler(InlineQueryHandler(inline_query_handler))
 
     app.add_handler(MessageHandler(filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"), set_language))
     app.add_handler(CallbackQueryHandler(select_download_type_callback, pattern="^dltype_"))
@@ -1355,23 +1354,36 @@ async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT
     texts = LANGUAGES[lang]
     logger.info(f"User {user_id} requested download cancellation.")
 
-    active_downloads = context.bot_data.setdefault('active_downloads', {})
-    download = active_downloads.get(user_id)
+    # Get active downloads from user_data instead of bot_data
+    active_downloads = context.user_data.get('active_downloads', [])
+    
+    # Find the active download task
+    active_download = None
+    for download in active_downloads:
+        if not download['task'].done():
+            active_download = download
+            break
 
-    if not download or not download.get('task') or download['task'].done():
+    if not active_download:
         try:
             await query.edit_message_text(texts["already_cancelled_or_done"])
         except Exception as e:
             logger.debug(f"Could not edit message for already cancelled/done download: {e}")
-            pass # Ignore error if message cannot be edited (e.g., already changed).
+            pass # Ignore error if message cannot be edited
         return
 
-    download['task'].cancel() # Cancel active download task.
+    # Cancel the task
+    active_download['task'].cancel()
     try:
         await query.edit_message_text(texts["cancelling"])
     except Exception as e:
         logger.debug(f"Could not edit message to 'cancelling': {e}")
-        pass # Ignore error if message cannot be edited.
+        pass # Ignore error if message cannot be edited
+    
+    # Remove cancelled task from active downloads
+    active_downloads = [d for d in active_downloads if d != active_download]
+    context.user_data['active_downloads'] = active_downloads
+    
     logger.info(f"Download task cancelled for user {user_id}.")
 
 
@@ -1506,57 +1518,7 @@ async def copyright_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         ], cache_time=5)
 
-async def inline_download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles the download callback from inline query results.
-    """
-    query = update.callback_query
-    await query.answer()
-    
-    try:
-        _, dl_type, format_type, user_id, video_id = query.data.split("_")
-        user_id = int(user_id)
-        
-        if query.from_user.id != user_id:
-            await query.answer("This button is not for you.", show_alert=True)
-            return
-            
-        url = f"https://youtu.be/{video_id}"
-        lang = get_user_lang(user_id)
-        texts = LANGUAGES[lang]
-        
-        # Edit message to show download status
-        await query.edit_message_text(
-            text=query.message.text.split("\n\n")[0] + "\n\n⏳ Downloading...",
-            reply_markup=None
-        )
-        
-        # Start download task
-        active_downloads = context.user_data.setdefault('active_downloads', [])
-        active_downloads = [download for download in active_downloads if not download['task'].done()]
-        
-        if len(active_downloads) >= 3:
-            await query.edit_message_text(
-                text=query.message.text.split("\n\n")[0] + "\n\n❌ You have too many active downloads. Please wait."
-            )
-            return
-            
-        task = asyncio.create_task(
-            handle_download(query, context, url, texts, user_id, "audio_m4a")
-        )
-        
-        active_downloads.append({
-            'task': task,
-            'type': "audio_m4a",
-            'start_time': time.time()
-        })
-        context.user_data['active_downloads'] = active_downloads
-        
-    except Exception as e:
-        logger.error(f"Error in inline download callback: {e}")
-        await query.edit_message_text(
-            text=query.message.text.split("\n\n")[0] + "\n\n❌ Download failed. Please try again."
-        )
+
 
 def main():
     """
