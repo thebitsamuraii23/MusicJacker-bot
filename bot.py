@@ -774,7 +774,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         temp_dir = tempfile.mkdtemp()
         # Установка базовых настроек для всех форматов
         ydl_opts = {
-            'outtmpl': os.path.join(temp_dir, '%(artist,uploader,channel)s - %(title)s [%(id)s].%(ext)s'),
+            'outtmpl': os.path.join(temp_dir, '%(artist,uploader,channel)s - %(title)s.%(ext)s'),
             'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
             'progress_hooks': [progress_hook],
             'nocheckcertificate': True,
@@ -855,10 +855,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         for file_name in all_temp_files:
             file_path = os.path.join(temp_dir, file_name)
             file_ext_lower = os.path.splitext(file_name)[1].lower()
-            base_title = file_name
-            if " [" in base_title:
-                base_title = base_title.split(" [")[0]  # Убираем ID видео
-            base_title = os.path.splitext(base_title)[0]  # Убираем расширение
+            base_title = os.path.splitext(file_name)[0]  # Просто убираем расширение
 
             if file_ext_lower in ext_list:
                 downloaded_files_info.append((file_path, base_title))
@@ -902,26 +899,8 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             if not cover_bytes and 'youtube.com' in url or 'youtu.be' in url:
                 cover_bytes = get_youtube_thumbnail(url)
 
-            # --- Сжимаем обложку до <200KB (Telegram limit) ---
+            # --- Отключаем обложку ---
             thumb_bytes = None
-            if cover_bytes:
-                try:
-                    img = Image.open(io.BytesIO(cover_bytes))
-                    img = img.convert('RGB')
-                    # Telegram требует JPEG, <=200KB, <=320x320
-                    max_size = (320, 320)
-                    img.thumbnail(max_size, Image.LANCZOS)
-                    for quality in range(90, 10, -10):
-                        thumb_io = io.BytesIO()
-                        img.save(thumb_io, format='JPEG', quality=quality, optimize=True)
-                        if thumb_io.tell() < 195 * 1024:
-                            thumb_bytes = thumb_io.getvalue()
-                            break
-                    else:
-                        thumb_bytes = thumb_io.getvalue()
-                except Exception as e:
-                    logger.debug(f"Error compressing cover: {e}")
-                    thumb_bytes = None
 
             # --- Отправка аудио или видео с обложкой ---
             try:
