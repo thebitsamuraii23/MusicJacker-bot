@@ -774,7 +774,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         temp_dir = tempfile.mkdtemp()
         # Установка базовых настроек для всех форматов
         ydl_opts = {
-            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
+            'outtmpl': os.path.join(temp_dir, '%(artist,uploader,channel)s - %(title)s [%(id)s].%(ext)s'),
             'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
             'progress_hooks': [progress_hook],
             'nocheckcertificate': True,
@@ -855,20 +855,13 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         for file_name in all_temp_files:
             file_path = os.path.join(temp_dir, file_name)
             file_ext_lower = os.path.splitext(file_name)[1].lower()
-            try:
-                with yt_dlp.YoutubeDL() as ydl:
-                    info = ydl.extract_info(url, download=False)
-                    track_title = info.get('title', '')
-                    artist = info.get('artist', info.get('uploader', ''))
-                    full_title = f"{artist} - {track_title}" if artist else track_title
-            except:
-                # Fallback to filename if metadata extraction fails
-                full_title = os.path.splitext(file_name)[0]
-                if " [" in full_title:
-                    full_title = full_title.split(" [")[0]
+            base_title = file_name
+            if " [" in base_title:
+                base_title = base_title.split(" [")[0]  # Убираем ID видео
+            base_title = os.path.splitext(base_title)[0]  # Убираем расширение
 
             if file_ext_lower in ext_list:
-                downloaded_files_info.append((file_path, full_title))
+                downloaded_files_info.append((file_path, base_title))
 
         if not downloaded_files_info:
             await update_status_message_async(texts["error"] + " (file not found)", show_cancel_button=False)
