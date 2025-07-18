@@ -105,10 +105,7 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data[f'awaiting_search_query_{user_id}'] = True
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles the /stats command and sends user statistics.
-    """
-    user_id = update.effective_user.id
+    user_id = update.effective_user.id # major change: use effective_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
     stats = user_stats.get(user_id, {"downloads": 0, "searches": 0})
@@ -165,7 +162,7 @@ ffmpeg_path_from_env = os.getenv('FFMPEG_PATH')
 ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'
 FFMPEG_IS_AVAILABLE = os.path.exists(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK)
 REQUIRED_CHANNELS = [
-    os.getenv("REQUIRED_CHANNEL", "@ytdlpdeveloper"),
+    "@ytdlpdeveloper",
     "@samuraicodingrus"
 ]
 TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024 # 50 MB in bytes
@@ -266,7 +263,7 @@ ffmpeg_path_from_env = os.getenv('FFMPEG_PATH')
 ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'   # Default path for ffmpeg
 FFMPEG_IS_AVAILABLE = os.path.exists(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK)   # Check if ffmpeg is available
 REQUIRED_CHANNELS = [
-    os.getenv("REQUIRED_CHANNEL", "@ytdlpdeveloper"),
+    "@ytdlpdeveloper",
     "@samuraicodingrus"
 ]    # Channel to which users must be subscribed
 TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024 # 50 MB in bytes
@@ -312,7 +309,7 @@ LANGUAGES = {
             "\n🎵 Я также умею искать музыку по названию! Просто напишите /search.\n\n"
             f"📢 Для работы с ботом, подпишитесь на канал {REQUIRED_CHANNELS}.\n"
             "\n✨ Не забудьте подписаться на канал для обновлений и поддержки: @ytdlpdeveloper\n"
-            "\n📝 Блог: https://artoflife2303.github.io/miniblog/\n"
+            "\n📝 Блог: https://artoflife2303.github.io/minиблог/\n"
             "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
         ),
         "choose_lang": "Выберите язык / Choose language:",
@@ -361,6 +358,7 @@ LANGUAGES = {
             "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
             "\n💻 <a href=\"https://github.com/BitSamurai23/YTMusicDownloader\">GitHub: Open Source Code</a>"
         ),
+        "github_message": "💻 <a href=\"https://github.com/BitSamurai23/YTMusicDownloader\">GitHub: Open Source Code</a>\n\n📝 Blog: https://artoflife2303.github.io/minиблог/\n📢 Channel: @ytdlpdeveloper",
         "choose_lang": "Choose language:",
         "not_subscribed": f"To use the bot, please subscribe to all required channels and try again.\n\nRequired: {', '.join(REQUIRED_CHANNELS)}",
         "checking": "Checking link...",
@@ -384,8 +382,8 @@ LANGUAGES = {
         "already_cancelled_or_done": "Download already cancelled or completed.",
         "url_error_generic": "Failed to process URL. Make sure it's a valid YouTube or SoundCloud link.",
         "search_prompt": (
-            "Enter the track name or artist. Then click on the music, it will download in MP3 format."
-            "Enter /cancel to cancel the search."
+            "Enter the track name or artist. Then click on the music, it will download in MP3/M4A format.\n"
+            "Enter /cancel to cancel the search.\n"
             "Enter /search to search for music by name (YouTube)."
         ),
         "searching": "Searching for music...",
@@ -481,7 +479,7 @@ LANGUAGES = {
             "Müzik adıyla arama yapmak için /search yazın (YouTube)."
         ),
         "searching": "Musiqi axtarılır...",
-        "unsupported_url_in_search": "Bağlantı desteklenmir. Zəhmət olmasa, bağlantını yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir parça yükləyə bilərsiniz)",
+        "unsupported_url_in_search": "Bağlantı desteklenmir. Zəhmət olmasa, bağlantını yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
         "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
         "choose_track": "MP3 olaraq yükləmək üçün bir trek seçin:",
         "downloading_selected_track": "Seçilən trek MP3 olaraq yüklənir...",
@@ -567,7 +565,7 @@ LANGUAGES = {
         "cancelled": "Yükləmə ləğv edildi.",
         "download_in_progress": "Başqa bir yükləmə artıq davam edir. Zəhmət olmasa gözləyin və ya ləğv edin.",
         "already_cancelled_or_done": "Yükləmə artıq ləğv edilib və ya tamamlanıb.",
-        "url_error_generic": "URL emal edilə bilmədi. Etibarlı bir YouTube və ya SoundCloud linki olduğundan əmin olun.",
+        "url_error_generic": "URL emal edilə bilmədi. Etibarlı bir YouTube və ya SoundCloud bağlantısı olduğundan əmin olun.",
         "search_prompt": (
             "Trek adı və ya ifaçı adı daxil edin. Sonra musiqiyə tıklayın, MP3 formatında yüklənəcək.\n"
             "Aramayı iptal etmək üçün /cancel yazın.\n"
@@ -660,7 +658,7 @@ async def check_subscription(user_id: int, bot) -> bool:
             logger.error(f"Error checking subscription for user {user_id} in {channel}: {e}")
             return False
     return True
-    pass
+
 def blocking_yt_dlp_download(ydl_opts, url_to_download):
     """
     Performs download using yt-dlp in blocking mode.
@@ -975,39 +973,61 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             try:
                 with open(file_to_send, 'rb') as f_send:
                     if download_type == "video_mp4":
-                        if thumb_bytes:
-                            image = io.BytesIO(thumb_bytes)
-                            image.name = 'thumbnail.jpg'
-                            await context.bot.send_video(
+                        try:
+                            if thumb_bytes:
+                                with tempfile.NamedTemporaryFile(suffix='.jpg') as temp_thumb:
+                                    temp_thumb.write(thumb_bytes)
+                                    temp_thumb.flush()
+                                    await context.bot.send_video(
+                                        chat_id=chat_id,
+                                        video=f_send,
+                                        caption=title_str,
+                                        filename=os.path.basename(file_to_send),
+                                        thumb=open(temp_thumb.name, 'rb')
+                                    )
+                            else:
+                                await context.bot.send_video(
+                                    chat_id=chat_id,
+                                    video=f_send,
+                                    caption=title_str,
+                                    filename=os.path.basename(file_to_send)
+                                )
+                        except Exception as e:
+                            logger.error(f"Error sending video: {e}")
+                            # Fallback to document if video sending fails
+                            await context.bot.send_document(
                                 chat_id=chat_id,
-                                video=f_send,
-                                caption=title_str,
-                                filename=os.path.basename(file_to_send),
-                                thumbnail=image
-                            )
-                        else:
-                            await context.bot.send_video(
-                                chat_id=chat_id,
-                                video=f_send,
+                                document=f_send,
                                 caption=title_str,
                                 filename=os.path.basename(file_to_send)
                             )
                     else:
-                        if thumb_bytes:
-                            image = io.BytesIO(thumb_bytes)
-                            image.name = 'cover.jpg'
-                            await context.bot.send_audio(
+                        try:
+                            if thumb_bytes:
+                                with tempfile.NamedTemporaryFile(suffix='.jpg') as temp_thumb:
+                                    temp_thumb.write(thumb_bytes)
+                                    temp_thumb.flush()
+                                    await context.bot.send_audio(
+                                        chat_id=chat_id,
+                                        audio=f_send,
+                                        title=title_str,
+                                        filename=os.path.basename(file_to_send),
+                                        thumb=open(temp_thumb.name, 'rb')
+                                    )
+                            else:
+                                await context.bot.send_audio(
+                                    chat_id=chat_id,
+                                    audio=f_send,
+                                    title=title_str,
+                                    filename=os.path.basename(file_to_send)
+                                )
+                        except Exception as e:
+                            logger.error(f"Error sending audio: {e}")
+                            # Fallback to document if audio sending fails
+                            await context.bot.send_document(
                                 chat_id=chat_id,
-                                audio=f_send,
-                                title=title_str,
-                                filename=os.path.basename(file_to_send),
-                                thumbnail=image
-                            )
-                        else:
-                            await context.bot.send_audio(
-                                chat_id=chat_id,
-                                audio=f_send,
-                                title=title_str,
+                                document=f_send,
+                                caption=title_str,
                                 filename=os.path.basename(file_to_send)
                             )
                 await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
