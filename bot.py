@@ -774,7 +774,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         temp_dir = tempfile.mkdtemp()
         # Установка базовых настроек для всех форматов
         ydl_opts = {
-            'outtmpl': os.path.join(temp_dir, '%(artist,uploader,channel)s - %(title)s [Made by @ytdlpload_bot].%(ext)s'),
+            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
             'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
             'progress_hooks': [progress_hook],
             'nocheckcertificate': True,
@@ -797,72 +797,45 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             ext_list = [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]
             ydl_opts.update({
                 'format': 'bestaudio/best',
-                'postprocessors': [
-                    {
-                        'key': 'FFmpegExtractAudio',
-                        'preferredcodec': 'mp3',
-                        'preferredquality': '320',
-                    },
-                    {
-                        'key': 'FFmpegMetadata',
-                        'add_metadata': True,
-                    }
-                ],
-                'postprocessor_args': [
-                    '-acodec', 'libmp3lame',
-                    '-ar', '48000',
-                    '-b:a', '320k',
-                    '-ac', '2',
-                    '-metadata', 'title=%(title)s',
-                    '-metadata', 'artist=%(artist,uploader,channel)s'
-                ]
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '320',
+                }, {
+                    'key': 'FFmpegMetadata',
+                    'add_metadata': True,
+                }, {
+                    'key': 'EmbedThumbnail',
+                }],
             })
         elif download_type == "audio_m4a":
             ext_list = [".m4a", ".mp3", ".webm", ".ogg", ".opus", ".aac"]
             ydl_opts.update({
                 'format': 'bestaudio[ext=m4a]/bestaudio/best',
-                'postprocessors': [
-                    {
-                        'key': 'FFmpegExtractAudio',
-                        'preferredcodec': 'm4a',
-                        'preferredquality': '320',
-                    },
-                    {
-                        'key': 'FFmpegMetadata',
-                        'add_metadata': True,
-                    }
-                ],
-                'postprocessor_args': [
-                    '-acodec', 'aac',
-                    '-ar', '48000',
-                    '-b:a', '320k',
-                    '-ac', '2',
-                    '-movflags', '+faststart',
-                    '-metadata', 'title=%(title)s',
-                    '-metadata', 'artist=%(artist,uploader,channel)s'
-                ]
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'm4a',
+                    'preferredquality': '320',
+                }, {
+                    'key': 'FFmpegMetadata',
+                    'add_metadata': True,
+                }, {
+                    'key': 'EmbedThumbnail',
+                }],
             })
         elif download_type == "video_mp4":
-            ext_list = [".mp4"]
+            ext_list = [".mp4", ".mkv"]
             ydl_opts.update({
                 'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]',
                 'merge_output_format': 'mp4',
-                'postprocessors': [
-                    {
-                        'key': 'FFmpegMetadata',
-                        'add_metadata': True,
-                    }
-                ],
-                'postprocessor_args': [
-                    '-c:v', 'libx264',
-                    '-preset', 'medium',
-                    '-c:a', 'aac',
-                    '-b:a', '320k',
-                    '-movflags', '+faststart',
-                    '-metadata', 'title=%(title)s',
-                    '-metadata', 'artist=%(artist,uploader,channel)s'
-                ]
+                'postprocessors': [{
+                    'key': 'FFmpegMetadata',
+                    'add_metadata': True,
+                }, {
+                    'key': 'EmbedThumbnail',
+                }],
             })
+            
         
         # Удаление None значений из опций
         ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
@@ -882,13 +855,20 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         for file_name in all_temp_files:
             file_path = os.path.join(temp_dir, file_name)
             file_ext_lower = os.path.splitext(file_name)[1].lower()
-            # Сохраняем полное название, только убираем расширение и ID в конце
-            base_title = file_name
-            if " [" in base_title:
-                base_title = base_title.split(" [")[0]  # Убираем ID видео
-            base_title = os.path.splitext(base_title)[0]  # Убираем расширение
+            try:
+                with yt_dlp.YoutubeDL() as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    track_title = info.get('title', '')
+                    artist = info.get('artist', info.get('uploader', ''))
+                    full_title = f"{artist} - {track_title}" if artist else track_title
+            except:
+                # Fallback to filename if metadata extraction fails
+                full_title = os.path.splitext(file_name)[0]
+                if " [" in full_title:
+                    full_title = full_title.split(" [")[0]
+
             if file_ext_lower in ext_list:
-                downloaded_files_info.append((file_path, base_title))
+                downloaded_files_info.append((file_path, full_title))
 
         if not downloaded_files_info:
             await update_status_message_async(texts["error"] + " (file not found)", show_cancel_button=False)
@@ -964,7 +944,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                                         video=f_send,
                                         caption=title_str,
                                         filename=os.path.basename(file_to_send),
-                                        thumbnail=open(temp_thumb.name, 'rb')
+                                        thumb=open(temp_thumb.name, 'rb')
                                     )
                             else:
                                 await context.bot.send_video(
@@ -975,14 +955,13 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                                 )
                         except Exception as e:
                             logger.error(f"Error sending video: {e}")
-                            # Fallback to document if video sending fails
                             await context.bot.send_document(
                                 chat_id=chat_id,
                                 document=f_send,
                                 caption=title_str,
                                 filename=os.path.basename(file_to_send)
                             )
-                    else:
+                    else:  # audio formats (mp3, m4a)
                         try:
                             if thumb_bytes:
                                 with tempfile.NamedTemporaryFile(suffix='.jpg') as temp_thumb:
@@ -991,20 +970,23 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                                     await context.bot.send_audio(
                                         chat_id=chat_id,
                                         audio=f_send,
-                                        title=title_str,
+                                        caption=title_str,
                                         filename=os.path.basename(file_to_send),
-                                        thumbnail=open(temp_thumb.name, 'rb')
+                                        title=title_str,
+                                        performer=title_str.split(" - ")[0] if " - " in title_str else "",
+                                        thumb=open(temp_thumb.name, 'rb')
                                     )
                             else:
                                 await context.bot.send_audio(
                                     chat_id=chat_id,
                                     audio=f_send,
+                                    caption=title_str,
+                                    filename=os.path.basename(file_to_send),
                                     title=title_str,
-                                    filename=os.path.basename(file_to_send)
+                                    performer=title_str.split(" - ")[0] if " - " in title_str else ""
                                 )
                         except Exception as e:
                             logger.error(f"Error sending audio: {e}")
-                            # Fallback to document if audio sending fails
                             await context.bot.send_document(
                                 chat_id=chat_id,
                                 document=f_send,
