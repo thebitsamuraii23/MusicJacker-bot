@@ -983,7 +983,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                                         video=f_send,
                                         caption=title_str,
                                         filename=os.path.basename(file_to_send),
-                                        thumb=open(temp_thumb.name, 'rb')
+                                        thumbnail=open(temp_thumb.name, 'rb')
                                     )
                             else:
                                 await context.bot.send_video(
@@ -1012,7 +1012,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                                         audio=f_send,
                                         title=title_str,
                                         filename=os.path.basename(file_to_send),
-                                        thumb=open(temp_thumb.name, 'rb')
+                                        thumbnail=open(temp_thumb.name, 'rb')
                                     )
                             else:
                                 await context.bot.send_audio(
