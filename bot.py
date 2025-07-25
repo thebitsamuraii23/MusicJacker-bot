@@ -257,6 +257,7 @@ LANGUAGES = {
 load_dotenv()
 
 import sys
+import re
 
 # Импортируем недостающие модули для скачивания и обработки thumbnail
 import subprocess
@@ -285,6 +286,10 @@ TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024 # 50 MB in bytes
 TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ" # Text representation of the file size limit 
 # File to store user language preferences
 USER_LANGS_FILE = "user_languages.json" # File to store user language preferences
+
+# Global variable to store current URL for each user's download request
+current_url = None
+
 # Check if the cookies file exists              
 if not os.path.exists(cookies_path):
     logger.warning(f"Cookies file {cookies_path} not found. Some features may be limited.")
@@ -1321,6 +1326,10 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     
     try:
+        # Get user's language
+        user_lang = user_langs.get(str(user_id), "ru")
+        texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
+
         # Confirm the callback query to remove the loading state
         await query.answer()
         
@@ -1357,7 +1366,87 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
     except Exception as e:
         logger.error(f"Error in button handler: {str(e)}")
+        # Get user's language again in case of error
+        user_lang = user_langs.get(str(user_id), "ru")
+        texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
         await query.message.reply_text(texts.get("error", "Что-то пошло не так. Попробуйте позже!"))
+
+async def process_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
+    """
+    Process a URL message from user
+    """
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    # Get user's language
+    user_lang = user_langs.get(str(user_id), "ru")
+    texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
+
+    # Check if it's a valid YouTube/SoundCloud URL
+    if not (is_youtube_url(url) or is_soundcloud_url(url)):
+        await update.message.reply_text(
+            texts.get("not_youtube", "Это не поддерживаемая ссылка. Отправьте корректную ссылку на YouTube или SoundCloud.")
+        )
+        return
+
+    # Store the URL for the current user
+    global current_url
+    current_url = url
+
+    # Show format selection buttons
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🎵 MP3", callback_data=f"dltype_audio_mp3_{user_id}"),
+            InlineKeyboardButton("🎵 M4A", callback_data=f"dltype_audio_m4a_{user_id}"),
+            InlineKeyboardButton("📹 MP4", callback_data=f"dltype_video_mp4_{user_id}")
+        ]
+    ])
+    
+    await update.message.reply_text(
+        texts.get("choose_download_type", "Выберите формат:"),
+        reply_markup=keyboard
+    )
+
+async def process_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE, query: str):
+    """
+    Process a search query from user
+    """
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    # Get user's language
+    user_lang = user_langs.get(str(user_id), "ru")
+    texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
+
+    if query.lower() == "/cancel":
+        await update.message.reply_text(texts.get("search_cancelled", "Поиск отменен."))
+        return
+
+    # Send "searching" message
+    await update.message.reply_text(texts.get("searching", "Ищу музыку..."))
+
+    try:
+        results = await search_youtube(query)
+        if not results:
+            await update.message.reply_text(texts.get("no_results", "Ничего не найдено. Попробуйте другой запрос."))
+            return
+
+        # Create inline keyboard with search results
+        keyboard = []
+        for result in results[:10]:  # Limit to 10 results
+            keyboard.append([InlineKeyboardButton(
+                f"🎵 {result['title']}",
+                callback_data=f"search_{result['url']}_{user_id}"
+            )])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            texts.get("choose_track", "Выберите трек:"),
+            reply_markup=reply_markup
+        )
+    except Exception as e:
+        logger.error(f"Error during search: {str(e)}")
+        await update.message.reply_text(texts.get("error", "Произошла ошибка при поиске. Попробуйте позже."))
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -1369,6 +1458,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
+
+    # Get user's language
+    user_lang = user_langs.get(str(user_id), "ru")
+    texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
 
     if not await check_subscription(context.bot, chat_id):
         await update.message.reply_text(
@@ -1463,6 +1556,23 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
     context.user_data.pop(f'awaiting_search_query_{user_id}', None)
     logger.info(f"User {user_id} received {len(results)} search results.")
+
+def is_youtube_url(url):
+    """
+    Check if the URL is a valid YouTube URL.
+    """
+    youtube_regex = (
+        r'(https?://)?(www\.)?'
+        '(youtube|youtu|youtube-nocookie)\.(com|be)/'
+        '(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
+    )
+    return bool(re.match(youtube_regex, url))
+
+def is_soundcloud_url(url):
+    """
+    Check if the URL is a valid SoundCloud URL.
+    """
+    return 'soundcloud.com' in url.lower()
 
 def is_url(text):
     """
