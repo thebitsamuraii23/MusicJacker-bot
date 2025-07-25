@@ -1313,6 +1313,76 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=keyboard
     )
 
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles button callback queries.
+    """
+    query = update.callback_query
+    user_id = query.from_user.id
+    
+    try:
+        # Confirm the callback query to remove the loading state
+        await query.answer()
+        
+        if query.data.startswith("dltype_"):
+            _, type_, format_, callback_user_id = query.data.split("_")
+            
+            # Verify that the user who clicked is the one who requested
+            if str(user_id) != callback_user_id:
+                await query.answer("Это не ваш запрос на скачивание!", show_alert=True)
+                return
+                
+            # Remove the keyboard
+            await query.edit_message_reply_markup(reply_markup=None)
+            
+            # Get the appropriate text based on the format
+            status_text = {
+                "mp3": texts.get("downloading_audio", "Скачиваю аудио... Пожалуйста, подождите."),
+                "m4a": texts.get("downloading_audio", "Скачиваю аудио... Пожалуйста, подождите."),
+                "mp4": texts.get("downloading_video", "Скачиваю видео... Пожалуйста, подождите.")
+            }.get(format_, texts.get("downloading_audio", "Скачиваю... Пожалуйста, подождите."))
+            
+            await query.edit_message_text(status_text)
+            
+            # Start the download with the selected format
+            if type_ == "audio":
+                # Handle audio download
+                if format_ == "mp3":
+                    await handle_download(context, query.message.chat.id, current_url, "mp3")
+                elif format_ == "m4a":
+                    await handle_download(context, query.message.chat.id, current_url, "m4a")
+            elif type_ == "video" and format_ == "mp4":
+                # Handle video download
+                await handle_download(context, query.message.chat.id, current_url, "mp4")
+                
+    except Exception as e:
+        logger.error(f"Error in button handler: {str(e)}")
+        await query.message.reply_text(texts.get("error", "Что-то пошло не так. Попробуйте позже!"))
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles text messages from users
+    """
+    if not update.message or not update.message.text:
+        return
+
+    text = update.message.text
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+
+    if not await check_subscription(context.bot, chat_id):
+        await update.message.reply_text(
+            texts.get("not_subscribed", f"Для использования бота, подпишитесь на канал {REQUIRED_CHANNELS} и попробуйте снова.")
+        )
+        return
+
+    if is_url(text):
+        # Process URL
+        await process_url(update, context, text)
+    else:
+        # Process as search query
+        await process_search_query(update, context, text)
+
 async def search_youtube(query: str):
     """
     Performs a search for videos on YouTube.
@@ -1682,6 +1752,8 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", choose_language))
     app.add_handler(CommandHandler("languages", choose_language))
+    app.add_handler(CallbackQueryHandler(button))  # Добавляем обработчик для кнопок
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CommandHandler("search", search_command))
     app.add_handler(CommandHandler("copyright", copyright_command))
     app.add_handler(CommandHandler("stats", stats_command))
