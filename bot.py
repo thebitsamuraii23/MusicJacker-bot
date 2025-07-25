@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 from io import BytesIO
 # Standard library imports
 import os
@@ -98,6 +101,7 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await update.message.reply_text(f"⏳ Пожалуйста, подождите {wait_sec} сек. перед следующим поиском.")
         except Exception:
+            pass
             pass
         return
     user_last_search_time[user_id] = now
@@ -1523,7 +1527,14 @@ async def copyright_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texts = LANGUAGES[lang]
     logger.info(f"User {user_id} issued /copyright command.")
     await update.message.reply_text(texts["copyright_command"])
-    
+
+    # Получаем query из inline_query, если есть
+    query = getattr(update, 'inline_query', None)
+    if query:
+        query = query.query
+    else:
+        query = ''
+
     if len(query) < 3:
         # Показываем подсказку, если запрос слишком короткий
         await update.inline_query.answer(
