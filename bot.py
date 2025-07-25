@@ -103,6 +103,7 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
             pass
+            pass
         return
     user_last_search_time[user_id] = now
 
@@ -255,6 +256,8 @@ LANGUAGES = {
 # Load environment variables from .env file
 load_dotenv()
 
+import sys
+
 # Импортируем недостающие модули для скачивания и обработки thumbnail
 import subprocess
 import requests
@@ -265,7 +268,9 @@ logger = logging.getLogger(__name__)
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
-    raise ValueError("Cant found TELEGRAM_BOT_TOKEN in environment variables.")
+    logger.error("TELEGRAM_BOT_TOKEN not found in environment variables")
+    logger.error("TELEGRAM_BOT_TOKEN not found in environment variables")
+    sys.exit(1)
 
 # Paths and variables
 cookies_path = os.getenv('COOKIES_PATH', 'youtube.com_cookies.txt')
@@ -282,7 +287,7 @@ TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ" # Text representation of the file size
 USER_LANGS_FILE = "user_languages.json" # File to store user language preferences
 # Check if the cookies file exists              
 if not os.path.exists(cookies_path):
-    logger.warning(f"Cookies file {cookies_path} not found. Some features may not work properly.")
+    logger.warning(f"Cookies file {cookies_path} not found. Some features may be limited.")
 # Keyboard for language selection # This keyboard will be shown to users when they start the bot or change language 
 LANG_KEYBOARD = ReplyKeyboardMarkup( # Keyboard for selecting language
     [
@@ -1122,11 +1127,13 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         await update_status_message_async(texts["done_audio"], show_cancel_button=False)
         try:
             await context.bot.send_message(chat_id=chat_id, text=texts.get("cooldown_message", "⏳ Следующее скачивание будет доступно через 15 секунд."))
-        except Exception:
-        try:
-            await context.bot.send_message(chat_id=chat_id, text=texts.get("cooldown_message", "⏳ Следующее скачивание будет доступно через 15 секунд."))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error sending cooldown message: {str(e)}")
+            try:
+                await context.bot.send_message(chat_id=chat_id, text=texts.get("cooldown_message", "⏳ Следующее скачивание будет доступно через 15 секунд."))
+            except Exception as e:
+                logger.error(f"Failed to send cooldown message again: {str(e)}")
+                pass
         return
 
     # TODO: основной код здесь
