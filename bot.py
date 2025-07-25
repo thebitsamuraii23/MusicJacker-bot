@@ -670,21 +670,25 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Please choose a language from the keyboard."
         )
 
-async def check_subscription(user_id: int, bot) -> bool:
+async def check_subscription(bot, chat_id: int) -> bool:
     """
     Checks if the user is subscribed to all required channels.
+    Returns True if subscribed to all channels, False otherwise.
     """
-    for channel in REQUIRED_CHANNELS:
-        try:
-            member = await bot.get_chat_member(channel, user_id)
-            if member.status not in ("member", "administrator", "creator"):
-                logger.info(f"User {user_id} is NOT subscribed to {channel}")
+    try:
+        for channel in REQUIRED_CHANNELS:
+            try:
+                member = await bot.get_chat_member(chat_id=channel, user_id=chat_id)
+                if member.status not in ["member", "administrator", "creator"]:
+                    logger.info(f"User {chat_id} not subscribed to {channel}, status: {member.status}")
+                    return False
+            except Exception as e:
+                logger.error(f"Error checking subscription for user {chat_id} in channel {channel}: {e}")
                 return False
-        except Exception as e:
-            logger.error(f"Error checking subscription for user {user_id} in {channel}: {e}")
-            return False
-    return True
-    return True
+        return True
+    except Exception as e:
+        logger.error(f"General error in check_subscription for user {chat_id}: {e}")
+        return False
 
 def blocking_yt_dlp_download(ydl_opts, url_to_download):
     """
@@ -1463,9 +1467,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_lang = user_langs.get(str(user_id), "ru")
     texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
 
-    if not await check_subscription(context.bot, chat_id):
+    # Проверка подписки
+    is_subscribed = await check_subscription(context.bot, chat_id)
+    if not is_subscribed:
+        channels_text = ", ".join(REQUIRED_CHANNELS)
         await update.message.reply_text(
-            texts.get("not_subscribed", f"Для использования бота, подпишитесь на канал {REQUIRED_CHANNELS} и попробуйте снова.")
+            texts.get("not_subscribed", f"Для использования бота, подпишитесь на каналы:\n{channels_text}\n\nПосле подписки попробуйте снова.")
         )
         return
 
@@ -1613,7 +1620,7 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     # Check subscription before any message processing.
-    is_subscribed = await check_subscription(user_id, context.bot)
+    is_subscribed = await check_subscription(context.bot, user_id)
     if not is_subscribed:
         await update.message.reply_text(texts["not_subscribed"])
         return
