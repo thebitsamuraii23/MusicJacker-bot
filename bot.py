@@ -1276,51 +1276,49 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     Handles the selection of a track from search results.
     """
     query = update.callback_query
-    await query.answer() # Answer CallbackQuery to remove the 'clock' from the button.
+    await query.answer()  # Answer CallbackQuery to remove the 'clock'
     user_id = query.from_user.id
     logger.info(f"User {user_id} selected track from search: {query.data}")
 
     # Parse callback_data: format is 'searchsel_{user_id}_{video_id}'
     try:
-        _, sel_user_id, video_id = query.data.split("_", 2)
+        _, sel_user_id, video_id = query.data.split("_")
         sel_user_id = int(sel_user_id)
-    except Exception as e:
-        logger.error(f"Error parsing search select callback data for user {user_id}: {e} - Data: {query.data}")
-        await query.edit_message_text("Track selection error.")
-        return
 
-    if user_id != sel_user_id:
-        logger.warning(f"User {user_id} tried to use another user's search select callback: {sel_user_id}")
-        await query.edit_message_text("This button is not for you.")
-        return
+        if user_id != sel_user_id:
+            logger.warning(f"User {user_id} tried to use another user's search select callback: {sel_user_id}")
+            await query.answer("Это не ваш запрос!", show_alert=True)
+            return
 
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
+        # Get user's language
+        user_lang = user_langs.get(str(user_id), "ru")
+        texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
 
-    url = f"https://youtu.be/{video_id}"  # Form URL from video ID.
-    # Store the URL for the next step (format selection)
-    context.user_data[f'url_for_download_{user_id}'] = url
+        # Form URL and store it
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        context.user_data[f'url_for_download_{user_id}'] = url
 
-    # Send copyright warning and ask for format (MP3/M4A/MP4)
-    try:
+        # Show copyright warning
         await query.edit_message_text(texts.get("copyright_pre"))
-    except Exception as e:
-        logger.debug(f"Could not edit copyright warning: {e}")
-        pass
 
-    # Show all three buttons for YouTube
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("🎵 MP3 (YouTube)", callback_data=f"dltype_audio_mp3_{user_id}"),
-            InlineKeyboardButton("🎵 M4A (YouTube)", callback_data=f"dltype_audio_m4a_{user_id}"),
-            InlineKeyboardButton("📹 MP4 720p (YouTube)", callback_data=f"dltype_video_mp4_{user_id}")
-        ]
-    ])
-    await context.bot.send_message(
-        chat_id=user_id,
-        text=texts.get("choose_download_type", "Choose audio/video format:"),
-        reply_markup=keyboard
-    )
+        # Show format selection buttons
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("🎵 MP3", callback_data=f"dltype_audio_mp3_{user_id}"),
+                InlineKeyboardButton("🎵 M4A", callback_data=f"dltype_audio_m4a_{user_id}"),
+                InlineKeyboardButton("📹 MP4", callback_data=f"dltype_video_mp4_{user_id}")
+            ]
+        ])
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=texts.get("choose_download_type", "Выберите формат:"),
+            reply_markup=keyboard
+        )
+
+    except Exception as e:
+        logger.error(f"Error in search select callback for user {user_id}: {e}")
+        await query.edit_message_text("Произошла ошибка при выборе трека. Попробуйте повторить поиск.")
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -1357,23 +1355,36 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             await query.edit_message_text(status_text)
             
-            # Start the download with the selected format
+            # Get URL from user data
+            url_to_download = context.user_data.get(f'url_for_download_{user_id}')
+            if not url_to_download:
+                await query.edit_message_text(texts.get("error", "Ошибка: ссылка не найдена"))
+                return
+
+            # Create download options based on format
+            download_type = None
             if type_ == "audio":
-                # Handle audio download
                 if format_ == "mp3":
-                    await handle_download(context, query.message.chat.id, current_url, "mp3")
+                    download_type = "mp3"
                 elif format_ == "m4a":
-                    await handle_download(context, query.message.chat.id, current_url, "m4a")
+                    download_type = "m4a"
             elif type_ == "video" and format_ == "mp4":
-                # Handle video download
-                await handle_download(context, query.message.chat.id, current_url, "mp4")
+                download_type = "mp4"
+
+            if download_type:
+                await handle_download(update_or_query=query, context=context, url=url_to_download,
+                                   texts=texts, user_id=user_id, download_type=download_type)
+            else:
+                await query.edit_message_text(texts.get("error", "Неподдерживаемый формат"))
+                return
+        # ...existing code...
                 
     except Exception as e:
         logger.error(f"Error in button handler: {str(e)}")
-        # Get user's language again in case of error
         user_lang = user_langs.get(str(user_id), "ru")
         texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
-        await query.message.reply_text(texts.get("error", "Что-то пошло не так. Попробуйте позже!"))
+        error_message = f"{texts.get('error', 'Что-то пошло не так.')} Ошибка: {str(e)}"
+        await query.message.reply_text(error_message)
 
 async def process_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
     """
@@ -1440,7 +1451,7 @@ async def process_search_query(update: Update, context: ContextTypes.DEFAULT_TYP
         for result in results[:10]:  # Limit to 10 results
             keyboard.append([InlineKeyboardButton(
                 f"🎵 {result['title']}",
-                callback_data=f"search_{result['url']}_{user_id}"
+                callback_data=f"searchsel_{user_id}_{result['id']}"
             )])
 
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1912,10 +1923,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     main()
 
-
-
 # I have written additional lines of codes and "#" in the code for understanding and studying the code.
-
 # Developed and made by BitSamurai.
-
 # Thanks!
