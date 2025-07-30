@@ -1,267 +1,16 @@
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-from io import BytesIO
-# Standard library imports
-import os
-import logging
-import asyncio
-import tempfile
-import shutil
-import json
-import time
-import requests
-from http import cookiejar
-
-# Third party imports
-from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, InlineQueryResultArticle, InputTextMessageContent
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler, InlineQueryHandler
-from dotenv import load_dotenv
-import yt_dlp
-from mutagen.id3 import ID3
-from mutagen.mp4 import MP4, MP4Cover
-from PIL import Image
-
-# Получение thumbnail через yt-dlp (YouTube)
-def get_youtube_thumbnail(url):
-    try:
-        ydl_opts = {
-            'quiet': True,
-            'skip_download': True,
-            'nocheckcertificate': True,
-            'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            thumb_url = info.get('thumbnail')
-            if not thumb_url and 'thumbnails' in info and info['thumbnails']:
-                thumb_url = info['thumbnails'][-1]['url']
-            if thumb_url:
-                # --- Передаем cookies в requests ---
-                cookies = None
-                if os.path.exists(cookies_path):
-                    import http.cookiejar
-                    cj = http.cookiejar.MozillaCookieJar()
-                    try:
-                        cj.load(cookies_path, ignore_discard=True, ignore_expires=True)
-                        cookies = {c.name: c.value for c in cj}
-                    except Exception as e:
-                        logger.warning(f"Could not load cookies for requests: {e}")
-                resp = requests.get(thumb_url, timeout=10, cookies=cookies)
-                if resp.status_code == 200:
-                    return resp.content
-    except Exception as e:
-        logger.warning(f"Could not fetch YouTube thumbnail: {e}")
-    return None
 import os # Import necessary libraries
 import logging # Import logging for debugging and information
 import asyncio # Import asyncio for asynchronous operations
 import tempfile # Import tempfile for temporary file handling
 import shutil # Import shutil for file operations
 import json # Import json for handling JSON data
-from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, InlineQueryResultArticle, InputTextMessageContent # Import necessary Telegram bot components 
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler, InlineQueryHandler # Import necessary Telegram bot handlers
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand # Import necessary Telegram bot components 
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler # Import necessary Telegram bot handlers
 from dotenv import load_dotenv # Import dotenv for environment variable management 
 import yt_dlp # Import yt-dlp for downloading media
 
-
-load_dotenv()
-
-user_stats = {}  # user_id: {"downloads": int, "searches": int}
-
-
-import time
-from mutagen.id3 import ID3
-from mutagen.mp4 import MP4, MP4Cover
-from PIL import Image
-import io
-
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-if not TOKEN:
-    raise ValueError("Cant found TELEGRAM_BOT_TOKEN in environment variables.")
-
-
-async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Starts the music search process.
-    """
-    import time
-    user_id = update.effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    logger.info(f"User {user_id} issued /search command.") 
-
-    # --- Таймаут между поисками ---
-    global user_last_search_time
-    now = time.time()
-    search_cooldown = 5  # секунд
-    last_search = user_last_search_time.get(user_id, 0)
-    if now - last_search < search_cooldown:
-        wait_sec = int(search_cooldown - (now - last_search))
-        try:
-            await update.message.reply_text(f"⏳ Пожалуйста, подождите {wait_sec} сек. перед следующим поиском.")
-        except Exception:
-            pass
-            pass
-            pass
-        return
-    user_last_search_time[user_id] = now
-
-    await update.message.reply_text(texts["search_prompt"])
-    context.user_data[f'awaiting_search_query_{user_id}'] = True
-
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id # major change: use effective_user.id
-    lang = get_user_lang(user_id)
-    texts = LANGUAGES[lang]
-    stats = user_stats.get(user_id, {"downloads": 0, "searches": 0})
-    await update.message.reply_text(
-        f"📊 Ваша статистика:\nСкачиваний: {stats['downloads']}\nПоисков: {stats['searches']}"
-    )
-
-def main():
-    import logging
-    load_dotenv() 
-    try:
-        app = Application.builder().token(TOKEN).build()
-        logger.info("Bot application built successfully.")
-    except Exception as e:
-        logger.critical(f"Failed to build bot application: {e}", exc_info=True)
-        raise
-
-    # Add command handlers.
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("language", choose_language))
-    app.add_handler(CommandHandler("languages", choose_language))
-    app.add_handler(CommandHandler("search", search_command))
-    app.add_handler(CommandHandler("copyright", copyright_command))
-    app.add_handler(CommandHandler("stats", stats_command))
-
-    app.add_handler(MessageHandler(filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"), set_language))
-    app.add_handler(CallbackQueryHandler(select_download_type_callback, pattern="^dltype_"))
-    app.add_handler(CallbackQueryHandler(search_select_callback, pattern="^searchsel_"))
-    app.add_handler(CallbackQueryHandler(cancel_download_callback, pattern="^cancel_"))
-    app.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND & ~filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"),
-        smart_message_handler
-    ))
-
-    async def set_commands(_):
-        logger.info("Setting bot commands.")
-        await app.bot.set_my_commands([
-            BotCommand("start", "Запуск и выбор языка / Start and choose language"),
-            BotCommand("languages", "Сменить язык / Change language"),
-            BotCommand("search", "Поиск музыки (YouTube/SoundCloud) / Search music (YouTube/SoundCloud)"),
-            BotCommand("copyright", "Информация об авторских правах / Copyright info"),
-            BotCommand("stats", "Ваша статистика / Your stats")
-        ])
-    app.post_init = set_commands
-    logger.info("Starting bot polling.")
-    try:
-        app.run_polling()
-    except Exception as e:
-        logger.critical(f"Bot polling failed: {e}", exc_info=True)
-
-
-cookies_path = os.getenv('COOKIES_PATH', 'youtube.com_cookies.txt')
-ffmpeg_path_from_env = os.getenv('FFMPEG_PATH')
-ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'
-FFMPEG_IS_AVAILABLE = os.path.exists(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK)
-REQUIRED_CHANNELS = [
-    "@ytdlpdeveloper",
-    "@samuraicodingrus"
-]
-TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024 # 50 MB in bytes
-TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ"
-USER_LANGS_FILE = "user_languages.json"
-if not os.path.exists(cookies_path):
-    logger.warning(f"Cookies file {cookies_path} not found. Some features may not work properly.")
-
-LANG_KEYBOARD = ReplyKeyboardMarkup(
-    [
-        ["Русский", "English"],
-        ["Español", "Azərbaycan dili"],
-        ["Türkçe", "Українська"],
-        ["العربية"]
-    ],
-    resize_keyboard=True,
-    one_time_keyboard=True
-)
-LANG_CODES = {
-    "Русский": "ru", "English": "en", "Españол": "es",
-    "Azərbaycan dili": "az", "Türkçe": "tr", "Українська": "uk",
-    "العربية": "ar"
-}
-SEARCH_RESULTS_LIMIT = 10
-user_langs = {}
-user_last_download_time = {}
-user_last_search_time = {}
-
-# --- LANGUAGES dictionary (all languages) ---
-LANGUAGES = {
-    "ru": {
-        # ...русские строки...
-    },
-    "en": {
-        "start": (
-            "👋 Hello! I am a bot for downloading music from YouTube and SoundCloud.\n\n"
-            "🔗 Just send a YouTube or SoundCloud link (video or track) and I will help you download the audio.\n"
-            "\n🎵 I can also search for music by name! Just type /search.\n\n"
-            f"📢 To use the bot, please subscribe to the channel {REQUIRED_CHANNELS}.\n"
-            "\n✨ Don't forget to subscribe for updates and support: @ytdlpdeveloper\n"
-            "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
-            "\n💻 <a href=\"https://github.com/BitSamurai23/YTMusicDownloader\">GitHub: Open Source Code</a>"
-        ),
-        "github_message": "💻 <a href=\"https://github.com/BitSamurai23/YTMusicDownloader\">GitHub: Open Source Code</a>\n\n📝 Blog: https://artoflife2303.github.io/miniblog/\n📢 Channel: @ytdlpdeveloper",
-        "choose_lang": "Choose language:",
-        "not_subscribed": f"To use the bot, please subscribe to all required channels and try again.\n\nRequired: {', '.join(REQUIRED_CHANNELS)}",
-        "checking": "Checking link...",
-        "not_youtube": "This is not a supported link. Please send a valid YouTube or SoundCloud link.",
-        "choose_download_type": "Choose audio format:",
-        "audio_button_mp3": "🎵 MP3 (YouTube)",
-        "audio_button_sc": "🎵 MP3 (SoundCloud)",
-        "downloading_audio": "Downloading audio... Please wait.",
-        "download_progress": "Downloading: {percent} at {speed}, ETA ~{eta}",
-        "too_big": f"File is too large (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Try another video or track.",
-        "done_audio": "Done! Audio sent.",
-        "cooldown_message": "⏳ Next download will be available in 15 seconds.",
-        "error": "Something went wrong. Check the link or try again!",
-        "error_private_video": "This is a private video and cannot be downloaded.",
-        "error_video_unavailable": "Video unavailable.",
-        "sending_file": "Sending file {index} of {total}...",
-        "cancel_button": "Cancel",
-        "cancelling": "Cancelling download...",
-        "cancelled": "Download cancelled.",
-        "download_in_progress": "Another download is already in progress. Please wait or cancel it.",
-        "already_cancelled_or_done": "Download already cancelled or completed.",
-        "url_error_generic": "Failed to process URL. Make sure it's a valid YouTube or SoundCloud link.",
-        "search_prompt": (
-            "Enter the track name or artist. Then click on the music, it will download in MP3/M4A format.\n"
-            "Enter /cancel to cancel the search.\n"
-            "Enter /search to search for music by name (YouTube)."
-        ),
-        "searching": "Searching for music...",
-        "unsupported_url_in_search": "The link is not  supported. Please check the link or try another query. (Alternatively, if it didn't work, you can download a track from another artist or Remix)",
-        "no_results": "Nothing found. Try another query.",
-        "choose_track": "Select a track to download in MP3:",
-        "downloading_selected_track": "Downloading the selected track in MP3...",
-        "copyright_pre": "⚠️ Warning! The material you are about to download may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, please contact copyrightytdlpbot@gmail.com for removal.",
-        "copyright_post": "⚠️ This material may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, contact copyrightytdlpbot@gmail.com.",
-        "copyright_command": "⚠️ Warning! All materials downloaded via this bot may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, contact copyrightytdlpbot@gmail.com and we will remove the content."
-    },
-    # ...другие языки по аналогии...
-}
-
-
 # Load environment variables from .env file
 load_dotenv()
-
-import sys
-import re
-
-# Импортируем недостающие модули для скачивания и обработки thumbnail
-import subprocess
-import requests
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -269,35 +18,23 @@ logger = logging.getLogger(__name__)
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TOKEN:
-    logger.error("TELEGRAM_BOT_TOKEN not found in environment variables")
-    logger.error("TELEGRAM_BOT_TOKEN not found in environment variables")
-    sys.exit(1)
+    raise ValueError("Cant found TELEGRAM_BOT_TOKEN in environment variables.")
 
 # Paths and variables
 cookies_path = os.getenv('COOKIES_PATH', 'youtube.com_cookies.txt')
 ffmpeg_path_from_env = os.getenv('FFMPEG_PATH')
 ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'   # Default path for ffmpeg
 FFMPEG_IS_AVAILABLE = os.path.exists(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK)   # Check if ffmpeg is available
-REQUIRED_CHANNELS = [
-    "@ytdlpdeveloper",
-    "@samuraicodingrus"
-]    # Channel to which users must be subscribed
+REQUIRED_CHANNEL = os.getenv("REQUIRED_CHANNEL", "@ytdlpdeveloper")    # Channel to which users must be subscribed
 TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024 # 50 MB in bytes
 TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ" # Text representation of the file size limit 
 # File to store user language preferences
 USER_LANGS_FILE = "user_languages.json" # File to store user language preferences
-
-# Global variable to store current URL for each user's download request
-current_url = None
-
-# Check if the cookies file exists              
-if not os.path.exists(cookies_path):
-    logger.warning(f"Cookies file {cookies_path} not found. Some features may be limited.")
 # Keyboard for language selection # This keyboard will be shown to users when they start the bot or change language 
 LANG_KEYBOARD = ReplyKeyboardMarkup( # Keyboard for selecting language
     [
         ["Русский", "English"], # Russian and English
-        ["Español", "Azərbaycan dili"], # Spanish and Azerbaijani        
+        ["Español", "Azərbaycan dili"], # Spanish and Azerbaijani
         ["Türkçe", "Українська"], # Turkish and Ukrainian
         ["العربية"] # Arabic
     ], 
@@ -305,8 +42,8 @@ LANG_KEYBOARD = ReplyKeyboardMarkup( # Keyboard for selecting language
     one_time_keyboard=True # Hide keyboard after selection
 )
 # Mapping language names to codes
-LANG_CODES = { # Mapping language names to their respective language codes
-    "Русский": "ru", "English": "en", "Españол": "es", # Spanish
+LANG_CODES = {
+    "Русский": "ru", "English": "en", "Español": "es", # Spanish
     "Azərbaycan dili": "az", "Türkçe": "tr", "Українська": "uk", # Ukrainian
     "العربية": "ar" # Arabic
 }
@@ -314,73 +51,65 @@ LANG_CODES = { # Mapping language names to their respective language codes
 SEARCH_RESULTS_LIMIT = 10 # Search results limit
 user_langs = {} # Dictionary for storing user language preferences
 
-# Dictionary to store the last download time for each user (user_id: timestamp)
-
-# Dictionary to store the last search time for each user (user_id: timestamp)
-user_last_download_time = {}
-user_last_search_time = {}
-
 # Dictionaries with localized texts
 LANGUAGES = {
     "ru": {
         "start": (
-            "👋 Привет! Я — бот для скачивания музыки с YouTube и SoundCloud.\n\n"
-            "🔗 Просто отправьте ссылку на видео или трек, и я помогу скачать аудио.\n"
-            "\n🎵 Я также умею искать музыку по названию! Просто напишите /search.\n\n"
-            f"📢 Для работы с ботом, подпишитесь на канал {REQUIRED_CHANNELS}.\n"
-            "\n✨ Не забудьте подписаться на канал для обновлений и поддержки: @ytdlpdeveloper\n"
-            "\n📝 Блог: https://artoflife2303.github.io/minиблог/\n"
-            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
+            "Привет! Я бот для скачивания аудио с YouTube и SoundCloud.\n\n"
+            "Отправьте ссылку на YouTube или SoundCloud (видео или трек), и я предложу вам варианты загрузки аудио.\n\n" # Instructions for using the bot
+            f"Для работы с ботом, подпишитесь на канал {REQUIRED_CHANNEL}.\n" # Welcome message
+            "\n🎵 Также я умею искать музыку по названию! Просто напишите /search и найдите нужный трек.\n" # Search command
+            "Приятного использования! " # Welcome message
+            "Не забудьте подписаться на канал для обновлений и поддержки @ytdlpdeveloper. artoflife2303.github.io/miniblog " # Blog link
+            "Веб версия бота: youtubemusicdownloader.life, если не работает то bit.ly/ytmusicload" # Web version of the bot
         ),
-        "choose_lang": "Выберите язык / Choose language:",
-        "not_subscribed": f"Чтобы пользоваться ботом, подпишитесь на все каналы и попробуйте снова.\n\nТребуется подписка: {', '.join(REQUIRED_CHANNELS)}",
-        "checking": "Проверяю ссылку...",
-        "not_youtube": "Это не поддерживаемая ссылка. Отправьте корректную ссылку на YouTube или SoundCloud.",
-        "choose_download_type": "Выберите формат аудио:",
-        "audio_button_mp3": "🎵 MP3 (YouTube)",
-        "audio_button_sc": "🎵 MP3 (SoundCloud)",
-        "downloading_audio": "Скачиваю аудио... Подождите.",
-        "download_progress": "Скачиваю: {percent} на скорости {speed}, осталось ~{eta}",
-        "too_big": f"Файл слишком большой (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Попробуйте другое видео или трек.",
+        "choose_lang": "Выберите язык / Choose language:", # Language selection prompt
+        "not_subscribed": f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова.", # Subscription check message
+        "checking": "Проверяю ссылку...", # Checking link message
+        "not_youtube": "Это не поддерживаемая ссылка. Отправьте корректную ссылку на YouTube или SoundCloud.", # Not supported link message
+        "choose_download_type": "Выберите формат аудио:", # Download format selection prompt
+        "audio_button_mp3": "🎵 MP3 (YouTube)", 
+        "audio_button_sc": "🎵 MP3 (SoundCloud)", 
+        "downloading_audio": "Скачиваю аудио... Подождите.", # Downloading audio message
+        "download_progress": "Скачиваю: {percent} на скорости {speed}, осталось ~{eta}", # Download progress message
+        "too_big": f"Файл слишком большой (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Попробуйте другое видео или трек.", # File size limit message
         "done_audio": "Готово! Аудио отправлено.",
-        "cooldown_message": "⏳ Следующее скачивание будет доступно через 15 секунд.",
-        "error": "Что-то пошло не так. Проверьте ссылку или попробуйте позже!\n",
-        "error_private_video": "Это приватное видео и не может быть скачано.",
-        "error_video_unavailable": "Видео недоступно.",
-        "sending_file": "Отправляю файл {index} из {total}...",
-        "cancel_button": "Отмена",
-        "cancelling": "Отменяю загрузку...",
-        "cancelled": "Загрузка отменена.",
-        "download_in_progress": "Другая загрузка уже в процессе. Пожалуйста, подождите или отмените её.",
-        "already_cancelled_or_done": "Загрузка уже отменена или завершена.",
-        "url_error_generic": "Не удалось обработать URL. Убедитесь, что это корректная ссылка на YouTube или SoundCloud.",
-        "search_prompt": (
-            "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрузится в формате MP3/M4A.\n"
+        "error": "Что-то пошло не так. Проверьте ссылку или попробуйте позже!\n", # Error message
+        "error_private_video": "Это приватное видео и не может быть скачано.", # Private video error message
+        "error_video_unavailable": "Видео недоступно.", # Video unavailable error message
+        "sending_file": "Отправляю файл {index} из {total}...", # Sending file message
+        "cancel_button": "Отмена", # Cancel button text
+        "cancelling": "Отменяю загрузку...", # Cancel download message
+        "cancelled": "Загрузка отменена.", # Download cancelled message
+        "download_in_progress": "Другая загрузка уже в процессе. Пожалуйста, подождите или отмените её.", # Download in progress message
+        "already_cancelled_or_done": "Загрузка уже отменена или завершена.", # Already cancelled or done message
+        "url_error_generic": "Не удалось обработать URL. Убедитесь, что это корректная ссылка на YouTube или SoundCloud.", # URL error message
+        "search_prompt": ( 
+            "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрзится в формате MP3.\n"
             "Введите /cancel для отмены поиска.\n"
             "Введите /search для поиска музыки по названию (YouTube)."
         ),
-        "searching": "Ищу музыку...",
+        "searching": "Ищу музыку...", # Search in progress message
         "unsupported_url_in_search": "Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос.(Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)",
-        "no_results": "Ничего не найдено. Попробуйте другой запрос.",
-        "choose_track": "Выберите трек для скачивания MP3/M4A:",
-        "downloading_selected_track": "Скачиваю выбранный трек в MP3/M4A...",
+        "no_results": "Ничего не найдено. Попробуйте другой запрос.", # No results found message
+        "choose_track": "Выберите трек для скачивания MP3:", # Track selection prompt
+        "downloading_selected_track": "Скачиваю выбранный трек в MP3...", # Downloading selected track message
         "copyright_pre": "⚠️ Внимание! Загружаемый вами материал может быть защищён авторским правом. Используйте только для личных целей. Если вы являетесь правообладателем и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com для удаления контента.",
         "copyright_post": "⚠️ Данный материал может быть защищён авторским правом. Используйте только для личных целей. Если вы правообладатель и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com.",
         "copyright_command": "⚠️ Внимание! Все материалы, скачиваемые через этого бота, могут быть защищены авторским правом. Используйте только для личных целей. Если вы правообладатель и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com, и мы удалим соответствующий контент."
     },
     "en": {
         "start": (
-            "👋 Hello! I am a bot for downloading music from YouTube and SoundCloud.\n\n"
-            "🔗 Just send a YouTube or SoundCloud link (video or track) and I will help you download the audio.\n"
-            "\n🎵 I can also search for music by name! Just type /search.\n\n"
-            f"📢 To use the bot, please subscribe to the channel {REQUIRED_CHANNELS}.\n"
-            "\n✨ Don't forget to subscribe for updates and support: @ytdlpdeveloper\n"
-            "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
-            "\n💻 <a href=\"https://github.com/BitSamurai23/YTMusicDownloader\">GitHub: Open Source Code</a>"
+            "Hello! I am a bot for downloading audio from YouTube and SoundCloud. # Welcome message"
+            "Send a YouTube or SoundCloud link (video or track), and I will offer you audio download options."
+            f"To use the bot, please subscribe to the channel {REQUIRED_CHANNEL}."
+            "\n🎵 I can also search for music by name! Just type /search and find your track."
+            "Enjoy!" # Instructions for using the bot
+            "Don't forget to subscribe to the channel for updates and support @ytdlpdeveloper. artoflife2303.github.io/miniblog. " # Blog link
+            "Web version of the bot: youtubemusicdownloader.life, if it doesn't work then bit.ly/ytmusicload" # Web version link
         ),
-        "github_message": "💻 <a href=\"https://github.com/BitSamurai23/YTMusicDownloader\">GitHub: Open Source Code</a>\n\n📝 Blog: https://artoflife2303.github.io/minиблог/\n📢 Channel: @ytdlpdeveloper",
         "choose_lang": "Choose language:",
-        "not_subscribed": f"To use the bot, please subscribe to all required channels and try again.\n\nRequired: {', '.join(REQUIRED_CHANNELS)}",
+        "not_subscribed": f"To use the bot, please subscribe to {REQUIRED_CHANNEL} and try again.",
         "checking": "Checking link...",
         "not_youtube": "This is not a supported link. Please send a valid YouTube or SoundCloud link.",
         "choose_download_type": "Choose audio format:",
@@ -390,7 +119,6 @@ LANGUAGES = {
         "download_progress": "Downloading: {percent} at {speed}, ETA ~{eta}",
         "too_big": f"File is too large (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Try another video or track.",
         "done_audio": "Done! Audio sent.",
-        "cooldown_message": "⏳ Next download will be available in 15 seconds.",
         "error": "Something went wrong. Check the link or try again!",
         "error_private_video": "This is a private video and cannot be downloaded.",
         "error_video_unavailable": "Video unavailable.",
@@ -402,12 +130,12 @@ LANGUAGES = {
         "already_cancelled_or_done": "Download already cancelled or completed.",
         "url_error_generic": "Failed to process URL. Make sure it's a valid YouTube or SoundCloud link.",
         "search_prompt": (
-            "Enter the track name or artist. Then click on the music, it will download in MP3/M4A format.\n"
-            "Enter /cancel to cancel the search.\n"
+            "Enter the track name or artist. Then click on the music, it will download in MP3 format."
+            "Enter /cancel to cancel the search."
             "Enter /search to search for music by name (YouTube)."
         ),
         "searching": "Searching for music...",
-        "unsupported_url_in_search": "The link is not  supported. Please check the link or try another query. (Alternatively, if it didn't work, you can download a track from another artist or Remix)",
+        "unsupported_url_in_search": "The link is not supported. Please check the link or try another query. (Alternatively, if it didn't work, you can download a track from another artist or Remix)",
         "no_results": "Nothing found. Try another query.",
         "choose_track": "Select a track to download in MP3:",
         "downloading_selected_track": "Downloading the selected track in MP3...",
@@ -417,16 +145,16 @@ LANGUAGES = {
     },
     "es": {
         "start": (
-            "👋 ¡Hola! Soy un bot para descargar música de YouTube y SoundCloud.\n\n"
-            "🔗 Solo envía un enlace de YouTube o SoundCloud (video o pista) y te ayudaré a descargar el audio.\n"
-            "\n🎵 ¡También puedo buscar música por nombre! Escribe /search.\n\n"
-            f"📢 Para usar el bot, suscríbete al canal {REQUIRED_CHANNELS}.\n"
-            "\n✨ No olvides suscribirte para actualizaciones y soporte: @ytdlpdeveloper\n"
-            "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
-            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
+            "¡Hola! Soy un bot para descargar audio de YouTube y SoundCloud."
+            "Envíame un enlace de YouTube o SoundCloud (video o pista) y te ofreceré opciones para descargar el audio."
+            f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL}."
+            "\n🎵 ¡También puedo buscar música por nombre! Escribe /search y encuentra tu pista."
+            "¡Disfruta!"
+            "No olvides suscribirte al canal para actualizaciones y soporte @ytdlpdeveloper. artoflife2303.github.io/miniblog. "
+            "Versión web del bot: youtubemusicdownloader.life, si no funciona entonces bit.ly/ytmusicload"
         ),
         "choose_lang": "Elige idioma:",
-        "not_subscribed": f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNELS} y vuelve a intentarlo.",
+        "not_subscribed": f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL} y vuelve a intentarlo.",
         "checking": "Verificando enlace...",
         "not_youtube": "Este enlace no es compatible. Por favor, envía un enlace válido de YouTube o SoundCloud.",
         "choose_download_type": "Elige el formato de audio:",
@@ -436,7 +164,6 @@ LANGUAGES = {
         "download_progress": "Descargando: {percent} a {speed}, queda ~{eta}",
         "too_big": f"El archivo es demasiado grande (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Prueba con otro video o pista.",
         "done_audio": "¡Listo! Audio enviado.",
-        "cooldown_message": "⏳ La próxima descarga estará disponible en 15 segundos.",
         "error": "¡Algo salió mal! Verifica el enlace o inténtalo de nuevo.",
         "error_private_video": "Este es un video privado y no puede ser descargado.",
         "error_video_unavailable": "Video no disponible.",
@@ -448,8 +175,8 @@ LANGUAGES = {
         "already_cancelled_or_done": "La descarga ya fue cancelada o completada.",
         "url_error_generic": "No se pudo procesar la URL. Asegúrate de que sea un enlace válido de YouTube o SoundCloud.",
         "search_prompt": (
-            "Ingrese el nombre de la pista o artista. Luego haga clic en la música, se descargará en formato MP3.\n"
-            "Ingrese /cancel para cancelar la búsqueda.\n"
+            "Ingrese el nombre de la pista o artista. Luego haga clic en la música, se descargará en formato MP3."
+            "Ingrese /cancel para cancelar la búsqueda."
             "Ingrese /search para buscar música por nombre (YouTube)."
         ),
         "searching": "Buscando música...",
@@ -463,16 +190,16 @@ LANGUAGES = {
     },
     "tr": {
         "start": (
-            "👋 Merhaba! Ben YouTube ve SoundCloud'dan müzik indirmek için bir botum.\n\n"
-            "🔗 Sadece bir YouTube veya SoundCloud bağlantısı gönderin (video veya parça), ses dosyasını indirmenize yardımcı olacağım.\n"
-            "\n🎵 Ayrıca isimle müzik arayabilirim! Sadece /search yazın.\n\n"
-            f"📢 Botu kullanmak için lütfen {REQUIRED_CHANNELS} kanalına abone olun.\n"
-            "\n✨ Güncellemeler ve destek için abone olmayı unutmayın: @ytdlpdeveloper\n"
-            "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
-            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
+            "Merhaba! Ben YouTube ve SoundCloud'dan ses indirmek için bir botum."
+            "YouTube veya SoundCloud bağlantısı gönderin (video veya parça), size ses indirme seçenekleri sunacağım."
+            f"Botu kullanmak için {REQUIRED_CHANNEL} kanalına abone olun."
+            "\n🎵 Ayrıca isimle müzik arayabilirim! Sadece /search yazın ve parçanızı bulun."
+            "İyi eğlenceler!"
+            "Botu kullanmak için kanala abone olmayı unutmayın @ytdlpdeveloper. artoflife2303.github.io/miniblog "
+            "Web bot versiyonu: youtubemusicdownloader.life, eğer çalışmıyorsa hbit.ly/ytmusicload"
         ),
         "choose_lang": "Dil seçin:",
-        "not_subscribed": f"Botu kullanmak için lütfen {REQUIRED_CHANNELS} kanalına abone olun ve tekrar deneyin.",
+        "not_subscribed": f"Botu kullanmak için lütfen {REQUIRED_CHANNEL} kanalına abone olun ve tekrar deneyin.",
         "checking": "Bağlantı kontrol ediliyor...",
         "not_youtube": "Bu desteklenmeyen bir bağlantı. Lütfen geçerli bir YouTube veya SoundCloud bağlantısı gönderin.",
         "choose_download_type": "Ses formatı seçin:",
@@ -482,7 +209,6 @@ LANGUAGES = {
         "download_progress": "İndiriliyor: {percent} hızında {speed}, kalan ~{eta}",
         "too_big": f"Dosya çok büyük (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Başka bir video veya parça deneyin.",
         "done_audio": "Tamamlandı! Ses gönderildi.",
-        "cooldown_message": "⏳ Sonraki indirme 15 saniye sonra mümkün olacak.",
         "error": "Bir hata oluştu. Bağlantıyı kontrol edin veya tekrar deneyin!\n",
         "error_private_video": "Bu özel bir video ve indirilemez.",
         "error_video_unavailable": "Video kullanılamıyor.",
@@ -494,32 +220,31 @@ LANGUAGES = {
         "already_cancelled_or_done": "İndirme zaten iptal edildi veya tamamlandı.",
         "url_error_generic": "URL işlenemedi. Geçerli bir YouTube veya SoundCloud bağlantısı olduğundan emin olun.",
         "search_prompt": (
-            "Parça adı veya sanatçı adı girin. Ardından müziyə tıklayın, MP3 formatında indirilecektir.\n"
+            "Parça adı veya sanatçı adı girin. Ardından müziğe tıklayın, MP3 formatında indirilecektir.\n"
             "Aramayı iptal etmek için /cancel yazın.\n"
             "Müzik adıyla arama yapmak için /search yazın (YouTube)."
         ),
-        "searching": "Musiqi axtarılır...",
-        "unsupported_url_in_search": "Bağlantı desteklenmir. Zəhmət olmasa, bağlantını yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
-        "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
-        "choose_track": "MP3 olaraq yükləmək üçün bir trek seçin:",
-        "downloading_selected_track": "Seçilən trek MP3 olaraq yüklənir...",
-        "copyright_pre": "⚠️ Dikkat! İndirmək üzrə olduğunuz materyal telif haqqı ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "searching": "Müzik aranıyor...",
+        "unsupported_url_in_search": "Bağlantı desteklenmiyor. Lütfen bağlantıyı kontrol edin veya başka bir sorgu deneyin. (Alternatif olarak, işe yaramadıysa, başka bir sanatçıdan veya Remix bir parça indirebilirsiniz)",
+        "no_results": "Hiçbir sonuç bulunamadı. Başka bir sorgu deneyin.",
+        "choose_track": "MP3 olarak indirmek için bir parça seçin:",
+        "downloading_selected_track": "Seçilen parça MP3 olarak indiriliyor...",
+        "copyright_pre": "⚠️ Dikkat! İndirmek üzrə olduğunuz materyal telif haqqı ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
         "copyright_post": "⚠️ Bu materyal telif haqqı ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
         "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
     },
     "ar": {
         "start": (
-            "👋 مرحبًا! أنا بوت لتنزيل الموسيقى من YouTube و SoundCloud.\n\n"
-            "🔗 فقط أرسل رابط YouTube أو SoundCloud (فيديو أو مسار) وسأساعدك في تنزيل الصوت.\n"
-            "\n🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! فقط اكتب /search.\n\n"
-            f"📢 لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNELS}.\n"
-            "\n💡 النسخة الويب: youtubemusicdownloader.life (أو bit.ly/ytmusicload)\n"
-            "\n✨ لا تنس الاشتراك للحصول على التحديثات والدعم: @ytdlpdeveloper\n"
-            "\n📝 المدونة: https://artoflife2303.github.io/miniblog/\n"
-            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
+            "مرحبًا! أنا بوت لتنزيل الصوت من YouTube و SoundCloud."
+            "أرسل رابط YouTube أو SoundCloud (فيديو أو مسار) وسأقدم لك خيارات تنزيل الصوت."
+            f"لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNEL}."
+            "🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! ما عليك سوى كتابة /search والعثور على المسار الخاص بك."
+            "استمتع!"
+            "لا تنس الاشتراك في القناة للحصول على التحديثات والدعم @ytdlpdeveloper. artoflife2303.github.io/miniblog. "
+            "النسخة الويب من البوت: youtubemusicdownloader.life، إذا لم تعمل، فجرّب bit.ly/ytmusicload"
         ),
         "choose_lang": "اختر اللغة:",
-        "not_subscribed": f"لاستخدام البوت، يرجى الاشتراك في قناة {REQUIRED_CHANNELS} والمحاولة مرة أخرى.",
+        "not_subscribed": f"لاستخدام البوت، يرجى الاشتراك في قناة {REQUIRED_CHANNEL} والمحاولة مرة أخرى.",
         "checking": "جاري التحقق من الرابط...",
         "not_youtube": "هذا ليس رابطًا مدعومًا. يرجى إرسال رابط YouTube أو SoundCloud صالح.",
         "choose_download_type": "اختر تنسيق الصوت:",
@@ -529,7 +254,6 @@ LANGUAGES = {
         "download_progress": "جاري التنزيل: {percent} بسرعة {speed}، متبقي ~{eta}",
         "too_big": f"الملف كبير جدًا (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). جرب فيديو أو مسارًا آخر.",
         "done_audio": "تم! تم إرسال الصوت.",
-        "cooldown_message": "⏳ سيكون التنزيل التالي متاحًا بعد 15 ثانية.",
         "error": "حدث خطأ ما. تحقق من الرابط أو حاول مرة أخرى!",
         "error_private_video": "هذا فيديو خاص ولا يمكن تنزيله.",
         "error_video_unavailable": "الفيديو غير متاح.",
@@ -541,8 +265,8 @@ LANGUAGES = {
         "already_cancelled_or_done": "تم إلغاء التنزيل أو إكماله بالفعل.",
         "url_error_generic": "فشل في معالجة الرابط. تأكد من أنه رابط YouTube أو SoundCloud صالح.",
         "search_prompt": (
-            "أدخل اسم المقطع الصوتي أو الفنان. ثم انقر على الموسيقى، سيتم تنزيلها بصيغة MP3.\n"
-            "أدخل /cancel لإلغاء البحث.\n"
+            "أدخل اسم المقطع الصوتي أو الفنان. ثم انقر على الموسيقى، سيتم تنزيلها بصيغة MP3."
+            "أدخل /cancel لإلغاء البحث."
             "أدخل /search للبحث عن الموسيقى بالاسم (يوتيوب)."
         ),
         "searching": "جاري البحث عن الموسيقى...",
@@ -552,22 +276,22 @@ LANGUAGES = {
         "downloading_selected_track": "جاري تنزيل المسار المحدد بصيغة MP3...",
         "copyright_pre": " تحذير! قد يكون المحتوى الذي توشك على تنزيله محميًا بحقوق النشر. استخدمه للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com لحذف المحتوى.",
         "copyright_post": "⚠️ قد يكون هذا المحتوى محميًا بحقوق النشر. استخدمه للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com.",
-        "copyright_command": "⚠️ تحذير! جميع المواد التي يتم تنزيلها عبر هذا البوت قد تكون محمية بحقوق النشر. استخدمها للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com وسنقوم بحذف المحتوى."
+        "copyright_command": "⚠️ تحذير! جميع المواد التي يتم تنزيلها عبر هذا البوت قد تكون محمية بحقوق النشر. استخدمها للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة، يرجى التواصل عبر copyrightytdlpbot@gmail.com وسنقوم بحذف المحتوى.",
     },
     "az": {
         "start": (
-            "👋 Salam! Mən YouTube və SoundCloud-dan musiqi yükləmək üçün bir botam.\n\n"
-            "🔗 Sadəcə YouTube və ya SoundCloud linki göndərin (video və ya trek), səs faylını yükləməyə kömək edəcəyəm.\n"
-            "\n🎵 Həmçinin adla musiqi axtara bilərəm! Sadəcə /search yazın.\n\n"
-            f"📢 Botdan istifadə etmək üçün {REQUIRED_CHANNELS} kanalına abunə olun.\n"
-            "\n✨ Yeniliklər və dəstək üçün kanala abunə olmağı unutmayın: @ytdlpdeveloper\n"
-            "\n📝 Blog: https://artoflife2303.github.io/miniblog/\n"
-            "\n💻 GitHub: https://github.com/BitSamurai23/YTMusicDownloader"
+            "Salam! Mən YouTube və SoundCloud-dan səs yükləmək üçün bir botam."
+            "YouTube və ya SoundCloud linki (video və ya trek) göndərin, sizə səs yükləmə seçimləri təklif edəcəm."
+            f"Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun."
+            "\n🎵 Həmçinin adla musiqi axtara bilərəm! Sadəcə /search yazın və trekinizi tapın."
+            "Əylənin!"
+            "Yeniliklər və dəstək üçün kanala abunə olmağı unutmayın @ytdlpdeveloper. artoflife2303.github.io/miniblog. "
+            "Botun veb versiyası: youtubemusicdownloader.life, əgər işləmirsə bit.ly/ytmusicload"
         ),
         "choose_lang": "Dil seçin:",
-        "not_subscribed": f"Botdan istifadə etmək üçün zəhmət olmasa {REQUIRED_CHANNELS} kanalına abunə olun və yenidən cəhd edin.",
+        "not_subscribed": f"Botdan istifadə etmək üçün zəhmət olmasa {REQUIRED_CHANNEL} kanalına abunə olun və yenidən cəhd edin.",
         "checking": "Link yoxlanılır...",
-        "not_youtube": "Bu dəstəklənməyən bir bağlantı. Zəhmət olmasa, etibarlı bir YouTube və ya SoundCloud linki göndərin.",
+        "not_youtube": "Bu dəstəklənməyən bir bağlantıdır. Zəhmət olmasa, etibarlı bir YouTube və ya SoundCloud linki göndərin.",
         "choose_download_type": "Səs formatını seçin:",
         "audio_button_mp3": "🎵 MP3 (YouTube)",
         "audio_button_sc": "🎵 MP3 (SoundCloud)",
@@ -575,9 +299,8 @@ LANGUAGES = {
         "download_progress": "Yüklənir: {percent} sürətlə {speed}, qalıb ~{eta}",
         "too_big": f"Fayl çox böyükdür (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Başqa bir video və ya trek sınayın.",
         "done_audio": "Hazırdır! Səs göndərildi.",
-        "cooldown_message": "⏳ Növbəti yükləmə 15 saniyədən sonra mümkün olacaq.",
-        "error": "Nəsə səhv getdi. Bağlantını yoxlayın və ya sonra cəhd edin!\n",
-        "error_private_video": "Bu xüsusi videodur və yüklənə bilməz.",
+        "error": "Nəsə səhv getdi. Linki yoxlayın və ya sonra cəhd edin!\n",
+        "error_private_video": "Bu şəxsi videodur və yüklənə bilməz.",
         "error_video_unavailable": "Video mövcud deyil.",
         "sending_file": "{total} fayldan {index}-i göndərilir...",
         "cancel_button": "Ləğv et",
@@ -585,21 +308,21 @@ LANGUAGES = {
         "cancelled": "Yükləmə ləğv edildi.",
         "download_in_progress": "Başqa bir yükləmə artıq davam edir. Zəhmət olmasa gözləyin və ya ləğv edin.",
         "already_cancelled_or_done": "Yükləmə artıq ləğv edilib və ya tamamlanıb.",
-        "url_error_generic": "URL emal edilə bilmədi. Etibarlı bir YouTube və ya SoundCloud bağlantısı olduğundan əmin olun.",
+        "url_error_generic": "URL emal edilə bilmədi. Etibarlı bir YouTube və ya SoundCloud linki olduğundan əmin olun.",
         "search_prompt": (
             "Trek adı və ya ifaçı adı daxil edin. Sonra musiqiyə tıklayın, MP3 formatında yüklənəcək.\n"
-            "Aramayı iptal etmək üçün /cancel yazın.\n"
-            "Müzik adıyla arama yapmak için /search yazın (YouTube)."
+            "/cancel daxil edərək axtarışı ləğv edin.\n"
+            "/search daxil edərək adla musiqi axtarın (YouTube)."
         ),
         "searching": "Musiqi axtarılır...",
-        "unsupported_url_in_search": "Bağlantı desteklenmir. Zəhmət olmasa, bağlantını yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
+        "unsupported_url_in_search": "Link dəstəklənmir. Zəhmət olmasa, linki yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
         "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
         "choose_track": "MP3 olaraq yükləmək üçün bir trek seçin:",
         "downloading_selected_track": "Seçilən trek MP3 olaraq yüklənir...",
         "copyright_pre": "⚠️ Diqqət! Yüklədiyiniz material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
         "copyright_post": "⚠️ Bu material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
-        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnızca şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
-    },
+        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
+    }
 }
 
 def get_user_lang(user_id):
@@ -610,11 +333,13 @@ def get_user_lang(user_id):
     if lang in LANGUAGES:
         return lang
     return "ru"
+
 def is_soundcloud_url(url):
     """
     Checks if the URL is a SoundCloud link.
     """
     return "soundcloud.com/" in url.lower()
+
 def load_user_langs():
     """
     Loads user language preferences from a file.
@@ -629,13 +354,14 @@ def load_user_langs():
                 user_langs = {}
     else:
         user_langs = {}
+
 def save_user_langs():
     """
     Saves user language preferences to a file.
     """
     with open(USER_LANGS_FILE, 'w', encoding='utf-8') as f:
         json.dump(user_langs, f)
-    pass
+
 async def choose_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Sends the user a keyboard to choose a language.
@@ -645,13 +371,7 @@ async def choose_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
         LANGUAGES["ru"]["choose_lang"], # Use Russian text by default for language selection.
         reply_markup=LANG_KEYBOARD
     )
-    pass
-async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Sets the language for the user and sends a welcome message.
-    """
-    lang_name = update.message.text
-    lang_code = LANG_CODES.get(lang_name)
+
 async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Sets the language for the user and sends a welcome message.
@@ -670,24 +390,15 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Please choose a language from the keyboard."
         )
 
-async def check_subscription(bot, chat_id: int) -> bool:
+async def check_subscription(user_id: int, bot) -> bool:
     """
-    Checks if the user is subscribed to all required channels.
-    Returns True if subscribed to all channels, False otherwise.
+    Checks if the user is subscribed to the required channel.
     """
     try:
-        for channel in REQUIRED_CHANNELS:
-            try:
-                member = await bot.get_chat_member(chat_id=channel, user_id=chat_id)
-                if member.status not in ["member", "administrator", "creator"]:
-                    logger.info(f"User {chat_id} not subscribed to {channel}, status: {member.status}")
-                    return False
-            except Exception as e:
-                logger.error(f"Error checking subscription for user {chat_id} in channel {channel}: {e}")
-                return False
-        return True
+        member = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
+        return member.status in ("member", "administrator", "creator")
     except Exception as e:
-        logger.error(f"General error in check_subscription for user {chat_id}: {e}")
+        logger.error(f"Error checking subscription for user {user_id}: {e}")
         return False
 
 def blocking_yt_dlp_download(ydl_opts, url_to_download):
@@ -707,523 +418,192 @@ def blocking_yt_dlp_download(ydl_opts, url_to_download):
     except Exception as e:
         logger.error(f"yt-dlp download error: {e}")
         raise # Re-raise all other exceptions
-    pass
+
 async def ask_download_type(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
     """
-    Sends a copyright warning and asks the user about the download type (MP3/M4A/MP4 for YouTube/SoundCloud).
+    Sends a copyright warning and asks the user about the download type (MP3 for YouTube/SoundCloud).
     """
     user_id = update.effective_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
+    # Send copyright warning before format selection
     await update.message.reply_text(texts.get("copyright_pre"))
     context.user_data[f'url_for_download_{user_id}'] = url
-    # Allow both mp3, m4a, mp4 for YouTube, only mp3 for SoundCloud
     if is_soundcloud_url(url):
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(texts["audio_button_sc"], callback_data=f"dltype_audio_sc_{user_id}")]
         ])
     else:
         keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("🎵 MP3 (YouTube)", callback_data=f"dltype_audio_mp3_{user_id}"),
-                InlineKeyboardButton("🎵 M4A (YouTube)", callback_data=f"dltype_audio_m4a_{user_id}"),
-                InlineKeyboardButton("📹 MP4 720p (YouTube)", callback_data=f"dltype_video_mp4_{user_id}")
-            ]
+            [InlineKeyboardButton(texts["audio_button_mp3"], callback_data=f"dltype_audio_mp3_{user_id}")]
         ])
-    await update.message.reply_text("Выберите формат аудио/видео:", reply_markup=keyboard)
+    await update.message.reply_text(texts["choose_download_type"], reply_markup=keyboard)
 
 async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, url: str, texts: dict, user_id: int, download_type: str):
     """
-    Handles the download of an audio or video file from YouTube or SoundCloud.
+    Handles the download of an audio file from YouTube or SoundCloud.
     """
-    import time
-
-    # --- Заглушки для переменных, чтобы не было ошибок компиляции ---
-    downloaded_files_info = []  # TODO: заполнить реальными данными
-    total_files = len(downloaded_files_info)
-    chat_id = update_or_query.effective_chat.id if hasattr(update_or_query, 'effective_chat') else None
-    temp_dir = '/tmp'  # TODO: заменить на реальный temp_dir
-    def update_status_message_async(*args, **kwargs):
-        pass
-    for i, (file_to_send, title_str) in enumerate(downloaded_files_info):
-        await update_status_message_async(texts["sending_file"].format(index=i+1, total=total_files))
-        file_size = os.path.getsize(file_to_send)
-        if file_size > TELEGRAM_FILE_SIZE_LIMIT_BYTES:
-            await context.bot.send_message(chat_id=chat_id, text=f"{texts['too_big']} ({os.path.basename(file_to_send)})")
-            continue
-
-            # --- Получение title и artist из info.json, если есть ---
-            info_json_path = os.path.join(temp_dir, title_str + '.info.json')
-            title = None
-            artist = None
-            def parse_artist_title(raw_title):
-                base = os.path.basename(raw_title)
-                base = os.path.splitext(base)[0]
-                base = raw_title
-                if ' - ' in base:
-                    artist_part, title_part = base.split(' - ', 1)
-                else:
-                    artist_part, title_part = '', base
-                feat_regex = r'\((ft\.|feat\.|featuring)\s*([^\)]+)\)'
-                feat_regex2 = r'\[?(ft\.|feat\.|featuring)\s*([^\]\)]+)\]?'
-                featured = []
-                for regex in [feat_regex, feat_regex2]:
-                    for m in re.finditer(regex, title_part, re.IGNORECASE):
-                        featured.append(m.group(2).strip())
-                clean_title = re.sub(feat_regex, '', title_part, flags=re.IGNORECASE)
-                clean_title = re.sub(feat_regex2, '', clean_title, flags=re.IGNORECASE)
-                clean_title = clean_title.strip()
-                all_artists = [artist_part.strip()] if artist_part.strip() else []
-                for f in featured:
-                    for a in re.split(',|&| and ', f):
-                        a = a.strip()
-                        if a and a not in all_artists:
-                            all_artists.append(a)
-                return clean_title, ', '.join(all_artists)
-
-            if os.path.exists(info_json_path):
-                try:
-                    with open(info_json_path, 'r', encoding='utf-8') as f:
-                        info = json.load(f)
-                        raw_title = info.get('title')
-                        raw_artist = info.get('artist') or info.get('uploader') or info.get('channel')
-                        if raw_title and raw_artist:
-                            t, a = parse_artist_title(f"{raw_artist} - {raw_title}")
-                            title = t
-                            artist = a
-                        elif raw_title:
-                            t, a = parse_artist_title(raw_title)
-                            title = t
-                            artist = a
-                        else:
-                            title, artist = parse_artist_title(title_str)
-                except Exception as e:
-                    logger.debug(f"Could not read info.json: {e}")
-                    title, artist = parse_artist_title(title_str)
-            else:
-                title, artist = parse_artist_title(title_str)
-
-            # --- Явное скачивание thumbnail, если не найден ---
-            cover_bytes = None
-            cover_format = None
-            thumb_path = None
-            try:
-                if file_to_send.endswith('.mp3'):
-                    audio = ID3(file_to_send)
-                    for tag in audio.values():
-                        if tag.FrameID == 'APIC':
-                            cover_bytes = tag.data
-                            cover_format = tag.mime.split('/')[-1].upper() if tag.mime else 'JPEG'
-                            break
-                elif file_to_send.endswith('.m4a'):
-                    audio = MP4(file_to_send)
-                    cov = audio.tags.get('covr')
-                    if cov and len(cov) > 0:
-                        c = cov[0]
-                        if isinstance(c, MP4Cover):
-                            cover_bytes = bytes(c)
-                            cover_format = 'JPEG' if c.imageformat == MP4Cover.FORMAT_JPEG else 'PNG'
-                        else:
-                            cover_bytes = c
-                            cover_format = 'JPEG'
-            except Exception as e:
-                logger.debug(f"No cover found or error extracting cover: {e}")
-                cover_bytes = None
-                cover_format = None
-
-            # Если обложки нет — ищем thumbnail файл или скачиваем вручную
-            if not cover_bytes:
-                # 1. yt-dlp мог скачать thumbnail рядом с файлом
-                possible_thumbs = [os.path.join(temp_dir, f) for f in os.listdir(temp_dir) if f.startswith(title_str) and f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))]
-                if possible_thumbs:
-                    thumb_path = possible_thumbs[0]
-                else:
-                    # 2. Скачиваем thumbnail вручную через yt-dlp
-                    try:
-                        import subprocess
-                        thumb_path = os.path.join(temp_dir, f"{title_str}_thumb.jpg")
-                        yt_dlp_cmd = [
-                            'yt-dlp',
-                            '--skip-download',
-                            '--write-thumbnail',
-                            '--convert-thumbnails', 'jpg',
-                            '-o', os.path.join(temp_dir, f'{title_str}.%(ext)s'),
-                            url
-                        ]
-                        subprocess.run(yt_dlp_cmd, check=True)
-                        # После этого ищем файл
-                        for f in os.listdir(temp_dir):
-                            if f.startswith(title_str) and f.lower().endswith('.jpg'):
-                                thumb_path = os.path.join(temp_dir, f)
-                                break
-                    except Exception as e:
-                        logger.debug(f"yt-dlp thumbnail download failed: {e}")
-                        thumb_path = None
-                # 3. Если всё равно нет — пробуем requests
-                if not thumb_path and (("youtube.com" in url) or ("youtu.be" in url)):
-                    try:
-                        import requests
-                        video_id = None
-                        if 'v=' in url:
-                            video_id = url.split('v=')[1].split('&')[0]
-                        elif 'youtu.be/' in url:
-                            video_id = url.split('youtu.be/')[1].split('?')[0]
-                        if video_id:
-                            thumb_url = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
-                            r = requests.get(thumb_url, timeout=10)
-                            if r.status_code == 200:
-                                thumb_path = os.path.join(temp_dir, f"{title_str}_yt.jpg")
-                                with open(thumb_path, 'wb') as tf:
-                                    tf.write(r.content)
-                    except Exception as e:
-                        logger.debug(f"requests thumbnail download failed: {e}")
-                        thumb_path = None
-                # 4. Если нашли файл — читаем его
-                if thumb_path and os.path.exists(thumb_path):
-                    try:
-                        with open(thumb_path, 'rb') as tf:
-                            cover_bytes = tf.read()
-                        cover_format = 'JPEG' if thumb_path.lower().endswith('.jpg') else 'PNG'
-                    except Exception as e:
-                        logger.debug(f"Error reading downloaded thumbnail: {e}")
-                        cover_bytes = None
-                        cover_format = None
-
-            # Сжимаем обложку до <200KB
-            if cover_bytes:
-                try:
-                    img = Image.open(BytesIO(cover_bytes))
-                    img_format = 'JPEG' if img.mode in ('RGB', 'L', 'P') else 'PNG'
-                    out = BytesIO()
-                    img.save(out, format=img_format, quality=90, optimize=True)
-                    while out.tell() > 190 * 1024 and img_format == 'JPEG' and img.size[0] > 200:
-                        img = img.resize((int(img.size[0]*0.9), int(img.size[1]*0.9)))
-                        out = BytesIO()
-                        img.save(out, format=img_format, quality=85, optimize=True)
-                    cover_bytes = out.getvalue()
-                    cover_format = img_format
-                except Exception as e:
-                    logger.debug(f"Error compressing cover: {e}")
-                    cover_bytes = None
-                    cover_format = None
-
-            # --- Перезаписываем теги performer/title для mp3/m4a ---
-            try:
-                if title:
-                    title = f"{title} (Made by @ytdlpload_bot)"
-                if file_to_send.endswith('.mp3'):
-                    from mutagen.id3 import TIT2, TPE1, APIC
-                    audio = ID3(file_to_send)
-                    audio.delall('TIT2')
-                    audio.delall('TPE1')
-                    if title:
-                        audio.add(TIT2(encoding=3, text=title))
-                    if artist:
-                        audio.add(TPE1(encoding=3, text=artist))
-                    if cover_bytes:
-                        audio.delall('APIC')
-                        mime = f"image/{cover_format.lower()}" if cover_format else 'image/jpeg'
-                        audio.add(APIC(encoding=3, mime=mime, type=3, desc='Cover', data=cover_bytes))
-                    audio.save(file_to_send)
-                elif file_to_send.endswith('.m4a'):
-                    audio = MP4(file_to_send)
-                    if title:
-                        audio.tags['\xa9nam'] = [title]
-                    if artist:
-                        audio.tags['\xa9ART'] = [artist]
-                    if cover_bytes:
-                        imgfmt = MP4Cover.FORMAT_JPEG if (cover_format and cover_format.upper() == 'JPEG') else MP4Cover.FORMAT_PNG
-                        audio.tags['covr'] = [MP4Cover(cover_bytes, imageformat=imgfmt)]
-                    audio.save()
-            except Exception as e:
-                logger.debug(f"Error writing tags/cover: {e}")
-
-            # Удаляем временный thumbnail, если скачивали
-            if thumb_path and os.path.exists(thumb_path):
-                try:
-                    os.remove(thumb_path)
-                except Exception as e:
-                    logger.debug(f"Could not remove temp thumbnail: {e}")
-
-            # --- Отправка аудио или видео с обложкой ---
-            try:
-                with open(file_to_send, 'rb') as f_send:
-                    if download_type == "video_mp4":
-                        await context.bot.send_video(
-                            chat_id=chat_id,
-                            video=f_send,
-                            caption=None,
-                            filename=os.path.basename(file_to_send)
-                        )
-                    else:
-                        await context.bot.send_audio(
-                            chat_id=chat_id,
-                            audio=f_send,
-                            caption=None,
-                            filename=os.path.basename(file_to_send),
-                            title=title or '',
-                            performer=artist or ''
-                        )
-                await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
-                logger.info(f"Successfully sent audio for {url} to user {user_id}")
-            except Exception as e:
-                logger.error(f"Error sending audio file {os.path.basename(file_to_send)} to user {user_id}: {e}")
-                await context.bot.send_message(chat_id=chat_id, text=f"{texts['error']} (Error sending file {os.path.basename(file_to_send)})")
-
-            # --- Текст песни ---
-            # Удалено по просьбе пользователя: функция поиска и отправки текста песни
-                # Если есть " - ", делим на артиста и трек
-                if ' - ' in base:
-                    artist_part, title_part = base.split(' - ', 1)
-                else:
-                    artist_part, title_part = '', base
-                # В title_part ищем (ft. ...), [feat ...], (feat ...), etc
-                import re
-                feat_regex = r'\((ft\.|feat\.|featuring)\s*([^\)]+)\)'  # (ft. Daft Punk)
-                feat_regex2 = r'\[?(ft\.|feat\.|featuring)\s*([^\]\)]+)\]?'  # [feat. Daft Punk]
-                # Найти всех фичерингов
-                featured = []
-                for regex in [feat_regex, feat_regex2]:
-                    for m in re.finditer(regex, title_part, re.IGNORECASE):
-                        featured.append(m.group(2).strip())
-                # Удалить все (ft. ...), [feat ...] из title
-                clean_title = re.sub(feat_regex, '', title_part, flags=re.IGNORECASE)
-                clean_title = re.sub(feat_regex2, '', clean_title, flags=re.IGNORECASE)
-                clean_title = clean_title.strip()
-                # Собрать артистов
-                all_artists = [artist_part.strip()] if artist_part.strip() else []
-                for f in featured:
-                    # Иногда несколько артистов через запятую
-                    for a in re.split(',|&| and ', f):
-                        a = a.strip()
-                        if a and a not in all_artists:
-                            all_artists.append(a)
-                return clean_title, ', '.join(all_artists)
-
-            if os.path.exists(info_json_path):
-                try:
-                    with open(info_json_path, 'r', encoding='utf-8') as f:
-                        info = json.load(f)
-                        raw_title = info.get('title')
-                        raw_artist = info.get('artist') or info.get('uploader') or info.get('channel')
-                        # Если есть artist и title — используем их, но всё равно парсим для фичеринга
-                        if raw_title and raw_artist:
-                            # Если title уже содержит артистов, парсим
-                            t, a = parse_artist_title(f"{raw_artist} - {raw_title}")
-                            title = t
-                            artist = a
-                        elif raw_title:
-                            t, a = parse_artist_title(raw_title)
-                            title = t
-                            artist = a
-                        else:
-                            title, artist = parse_artist_title(title_str)
-                except Exception as e:
-                    logger.debug(f"Could not read info.json: {e}")
-                    title, artist = parse_artist_title(title_str)
-            else:
-                title, artist = parse_artist_title(title_str)
-
-            # --- Обложка (альбомный ковер, сжатие до <200KB, исправлено для Telegram, с fallback на yt-dlp thumbnail) ---
-            cover_bytes = None
-            cover_format = None
-            try:
-                if file_to_send.endswith('.mp3'):
-                    audio = ID3(file_to_send)
-                    for tag in audio.values():
-                        if tag.FrameID == 'APIC':
-                            cover_bytes = tag.data
-                            cover_format = tag.mime.split('/')[-1].upper() if tag.mime else 'JPEG'
-                            break
-                elif file_to_send.endswith('.m4a'):
-                    audio = MP4(file_to_send)
-                    cov = audio.tags.get('covr')
-                    if cov and len(cov) > 0:
-                        c = cov[0]
-                        if isinstance(c, MP4Cover):
-                            cover_bytes = bytes(c)
-                            cover_format = 'JPEG' if c.imageformat == MP4Cover.FORMAT_JPEG else 'PNG'
-                        else:
-                            cover_bytes = c
-                            cover_format = 'JPEG'
-            except Exception as e:
-                logger.debug(f"No cover found or error extracting cover: {e}")
-                cover_bytes = None
-                cover_format = None
-
-            if not cover_bytes and (('youtube.com' in url) or ('youtu.be' in url)):
-                cover_bytes = get_youtube_thumbnail(url)
-                cover_format = 'JPEG'
-
-            # Сжимаем обложку до <200KB
-            if cover_bytes:
-                try:
-                    img = Image.open(BytesIO(cover_bytes))
-                    img_format = 'JPEG' if img.mode in ('RGB', 'L', 'P') else 'PNG'
-                    out = BytesIO()
-                    img.save(out, format=img_format, quality=90, optimize=True)
-                    while out.tell() > 190 * 1024 and img_format == 'JPEG' and img.size[0] > 200:
-                        img = img.resize((int(img.size[0]*0.9), int(img.size[1]*0.9)))
-                        out = BytesIO()
-                        img.save(out, format=img_format, quality=85, optimize=True)
-                    cover_bytes = out.getvalue()
-                    cover_format = img_format
-                except Exception as e:
-                    logger.debug(f"Error compressing cover: {e}")
-                    cover_bytes = None
-                    cover_format = None
-
-            # --- Перезаписываем теги performer/title для mp3/m4a ---
-            try:
-                # Добавляем "(Made by @ytdlpload_bot)" к названию
-                if title:
-                    title = f"{title} (Made by @ytdlpload_bot)"
-                if file_to_send.endswith('.mp3'):
-                    from mutagen.id3 import TIT2, TPE1, APIC
-                    audio = ID3(file_to_send)
-                    audio.delall('TIT2')
-                    audio.delall('TPE1')
-                    if title:
-                        audio.add(TIT2(encoding=3, text=title))
-                    if artist:
-                        audio.add(TPE1(encoding=3, text=artist))
-                    if cover_bytes:
-                        audio.delall('APIC')
-                        mime = f"image/{cover_format.lower()}" if cover_format else 'image/jpeg'
-                        audio.add(APIC(encoding=3, mime=mime, type=3, desc='Cover', data=cover_bytes))
-                    audio.save(file_to_send)
-                elif file_to_send.endswith('.m4a'):
-                    audio = MP4(file_to_send)
-                    if title:
-                        audio.tags['\xa9nam'] = [title]
-                    if artist:
-                        audio.tags['\xa9ART'] = [artist]
-                    if cover_bytes:
-                        imgfmt = MP4Cover.FORMAT_JPEG if (cover_format and cover_format.upper() == 'JPEG') else MP4Cover.FORMAT_PNG
-                        audio.tags['covr'] = [MP4Cover(cover_bytes, imageformat=imgfmt)]
-                    audio.save()
-            except Exception as e:
-                logger.debug(f"Error writing tags/cover: {e}")
-
-            # --- Отправка аудио или видео с обложкой ---
-            try:
-                with open(file_to_send, 'rb') as f_send:
-                    if download_type == "video_mp4":
-                        await context.bot.send_video(
-                            chat_id=chat_id,
-                            video=f_send,
-                            caption=None,
-                            filename=os.path.basename(file_to_send)
-                        )
-                    else:
-                        await context.bot.send_audio(
-                            chat_id=chat_id,
-                            audio=f_send,
-                            caption=None,
-                            filename=os.path.basename(file_to_send),
-                            title=title or '',
-                            performer=artist or ''
-                        )
-                await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
-                logger.info(f"Successfully sent audio for {url} to user {user_id}")
-            except Exception as e:
-                logger.error(f"Error sending audio file {os.path.basename(file_to_send)} to user {user_id}: {e}")
-                await context.bot.send_message(chat_id=chat_id, text=f"{texts['error']} (Error sending file {os.path.basename(file_to_send)})")
-
-            # --- Текст песни ---
-            # Удалено по просьбе пользователя: функция поиска и отправки текста песни
-
-        await update_status_message_async(texts["done_audio"], show_cancel_button=False)
+    if not update_or_query.message:
         try:
-            await context.bot.send_message(chat_id=chat_id, text=texts.get("cooldown_message", "⏳ Следующее скачивание будет доступно через 15 секунд."))
-        except Exception as e:
-            logger.error(f"Error sending cooldown message: {str(e)}")
-            try:
-                await context.bot.send_message(chat_id=chat_id, text=texts.get("cooldown_message", "⏳ Следующее скачивание будет доступно через 15 секунд."))
-            except Exception as e:
-                logger.error(f"Failed to send cooldown message again: {str(e)}")
-                pass
+            # Send error message if chat_id is not found.
+            await context.bot.send_message(chat_id=user_id, text=texts["error"] + " (internal error: chat not found)")
+        except Exception:
+            pass # Ignore error if message cannot be sent.
         return
 
-    # TODO: основной код здесь
-    # Заглушки для except/finally, чтобы не было синтаксических ошибок
-    # except asyncio.CancelledError:
-    #     pass
-    # except Exception as e:
-    #     pass
-    # finally:
-    #     pass
-                # await update_status_message_async("The link is not supported. Please check the link or try another query.", show_cancel_button=False)
-                # else:
-                #     await context.bot.send_message(chat_id=chat_id, text="The link is not supported. Please check the link or try another query.")
-                # return
-        # --- Обработка ошибок ---
-        e = None
-        status_message = False
+    chat_id = update_or_query.message.chat_id
+    temp_dir = None
+    status_message = None
+    active_downloads = context.bot_data.setdefault('active_downloads', {})
+    loop = asyncio.get_running_loop()
+    cancel_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(texts["cancel_button"], callback_data=f"cancel_{user_id}")]])
+
+    async def update_status_message_async(text_to_update, show_cancel_button=True):
+        """
+        Updates the status message in the chat.
+        """
+        nonlocal status_message
+        if status_message:
+            try:
+                current_keyboard = cancel_keyboard if show_cancel_button else None
+                await status_message.edit_text(text_to_update, reply_markup=current_keyboard)
+            except Exception as e:
+                logger.debug(f"Could not edit status message: {e}") # Debug message
+                pass # Ignore errors when editing the message.
+
+    def progress_hook(d):
+        """
+        Progress hook for yt-dlp.
+        """
+        if d['status'] == 'downloading':
+            percent_str = d.get('_percent_str', 'N/A').strip()
+            speed_str = d.get('_speed_str', 'N/A').strip()
+            eta_str = d.get('_eta_str', 'N/A').strip()
+            progress_text = texts["download_progress"].format(percent=percent_str, speed=speed_str, eta=eta_str)
+            asyncio.run_coroutine_threadsafe(update_status_message_async(progress_text), loop)
+
+    try:
+        status_message = await context.bot.send_message(chat_id=chat_id, text=texts["downloading_audio"], reply_markup=cancel_keyboard)
+        temp_dir = tempfile.mkdtemp()
+        ydl_opts = {
+            'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
+            'format': 'bestaudio/best',
+            'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
+            'progress_hooks': [progress_hook],
+            'nocheckcertificate': True,
+            'quiet': True,
+            'no_warnings': True,
+            'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192K',
+            }],
+            'postprocessor_args': {
+                'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
+            },
+            'verbose': True # Enable verbose output to see what errors occur.
+        }
+        # Remove None values from ydl_opts to avoid errors.
+        ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
+
+        logger.info(f"Starting download for {url} by user {user_id}")
         try:
-            pass  # основной код
-        except Exception as exc:
-            e = exc
-            if 'logger' in globals():
-                logger.critical(f"Unhandled error in handle_download for user {user_id}: {e}", exc_info=True)
-            if 'status_message' in locals() and status_message:
-                await update_status_message_async(texts["error"] + str(e), show_cancel_button=False)
+            await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url)
+        except Exception as e:
+            if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
+                await update_status_message_async("The link is not supported. Please check the link or try another query.", show_cancel_button=False)
+                return
+            logger.error(f"Error during yt-dlp download for {url}: {e}")
+            raise # Re-raise exception after logging.
+
+        downloaded_files_info = []
+        all_temp_files = os.listdir(temp_dir)
+        for file_name in all_temp_files:
+            file_path = os.path.join(temp_dir, file_name)
+            file_ext_lower = os.path.splitext(file_name)[1].lower()
+            base_title = os.path.splitext(file_name.split(" [")[0])[0] # Extract title from file name.
+            if file_ext_lower in [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]:
+                downloaded_files_info.append((file_path, base_title))
+
+        if not downloaded_files_info:
+            await update_status_message_async(texts["error"] + " (file not found)", show_cancel_button=False)
+            return
+
+        total_files = len(downloaded_files_info)
+        for i, (file_to_send, title_str) in enumerate(downloaded_files_info):
+            await update_status_message_async(texts["sending_file"].format(index=i+1, total=total_files))
+            file_size = os.path.getsize(file_to_send)
+
+            if file_size > TELEGRAM_FILE_SIZE_LIMIT_BYTES:
+                await context.bot.send_message(chat_id=chat_id, text=f"{texts['too_big']} ({os.path.basename(file_to_send)})")
+                continue
+
+            try:
+                with open(file_to_send, 'rb') as f_send:
+                    await context.bot.send_audio(
+                        chat_id=chat_id, audio=f_send, title=title_str,
+                        filename=os.path.basename(file_to_send)
+                    )
+                # Send copyright message after sending each file
+                await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
+                logger.info(f"Successfully sent audio for {url} to user {user_id}")
+            except Exception as e:
+                logger.error(f"Error sending audio file {os.path.basename(file_to_send)} to user {user_id}: {e}")
+                await context.bot.send_message(chat_id=chat_id, text=f"{texts['error']} (Error sending file {os.path.basename(file_to_send)})")
+
+        await update_status_message_async(texts["done_audio"], show_cancel_button=False)
+
+    except asyncio.CancelledError:
+        # Handle download cancellation.
+        logger.info(f"Download cancelled for user {user_id}.")
+        if status_message:
+            await update_status_message_async(texts["cancelled"], show_cancel_button=False)
+        else:
+            await context.bot.send_message(chat_id=chat_id, text=texts["cancelled"])
+    except Exception as e:
+        # General error handling for download.
+        if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
+            if status_message:
+                await update_status_message_async("The link is not supported. Please check the link or try another query.", show_cancel_button=False)
             else:
-                await context.bot.send_message(chat_id=chat_id, text=texts["error"] + str(e))
-        finally:
-            import shutil
-            # Clean up temporary files
-            if temp_dir and os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir, ignore_errors=True)
-                if 'logger' in globals():
-                    logger.info(f"Cleaned up temporary directory {temp_dir} for user {user_id}.")
-            # Удаляем текущую задачу из списка активных загрузок
-            active_downloads = context.user_data.get('active_downloads', [])
-            current_task = None
-            for download in active_downloads:
-                if download['task'].done():
-                    current_task = download
-                    break
-            if current_task:
-                active_downloads.remove(current_task)
-                context.user_data['active_downloads'] = active_downloads
-                if 'logger' in globals():
-                    logger.info(f"Removed completed download task for user {user_id}")
-            # Обновляем время последнего скачивания только если не было ошибки
-            if 'now' in locals() and e is None:
-                user_last_download_time[user_id] = time.time()
+                await context.bot.send_message(chat_id=chat_id, text="The link is not supported. Please check the link or try another query.")
+            return
+        logger.critical(f"Unhandled error in handle_download for user {user_id}: {e}", exc_info=True) # Use critical for unhandled errors
+        if status_message:
+            await update_status_message_async(texts["error"] + str(e), show_cancel_button=False)
+        else:
+            await context.bot.send_message(chat_id=chat_id, text=texts["error"] + str(e))
+    finally:
+        # Clean up temporary files and remove active download status.
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            logger.info(f"Cleaned up temporary directory {temp_dir} for user {user_id}.")
+        if user_id in active_downloads:
+            del active_downloads[user_id]
+            logger.info(f"Removed active download for user {user_id}.")
 
 async def select_download_type_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles the selection of download type from the Inline keyboard.
     """
     query = update.callback_query
-    await query.answer()
+    await query.answer() # Answer CallbackQuery to remove the 'clock' from the button.
     user_id = query.from_user.id
     logger.info(f"User {user_id} selected download type: {query.data}")
     try:
         parts = query.data.split("_")
-        if len(parts) != 4 or parts[0] != "dltype" or (parts[1] not in ("audio", "video")):
-            raise ValueError("Incorrect callback_data format for audio/video")
+        if len(parts) != 4 or parts[0] != "dltype" or (parts[1] != "audio"):
+            raise ValueError("Incorrect callback_data format for audio")
         specific_format = parts[2]
         user_id_from_callback = int(parts[3])
 
-        if parts[1] == "audio":
-            if specific_format == "mp3":
-                download_type_for_handler = "audio_mp3"
-            elif specific_format == "sc":
-                download_type_for_handler = "audio_sc"
-            elif specific_format == "m4a":
-                download_type_for_handler = "audio_m4a"
-            else:
-                raise ValueError("Unknown download type")
-        elif parts[1] == "video":
-            if specific_format == "mp4":
-                download_type_for_handler = "video_mp4"
-            else:
-                raise ValueError("Unknown video download type")
+        if specific_format == "mp3":
+            download_type_for_handler = "audio_mp3"
+        elif specific_format == "sc":
+            download_type_for_handler = "audio_sc"
         else:
-            raise ValueError("Unknown callback type")
+            raise ValueError("Unknown download type")
 
     except (IndexError, ValueError) as e:
         logger.error(f"Error parsing callback_data for user {user_id}: {e} - Data: {query.data}")
@@ -1239,6 +619,7 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
     lang = get_user_lang(requesting_user_id)
     texts = LANGUAGES[lang]
 
+    # Extract URL for download from user_data.
     url_to_download = context.user_data.pop(f'url_for_download_{requesting_user_id}', None)
     if not url_to_download:
         logger.error(f"URL not found in user_data for user {requesting_user_id}")
@@ -1246,253 +627,15 @@ async def select_download_type_callback(update: Update, context: ContextTypes.DE
         return
 
     try:
-        await query.edit_message_reply_markup(reply_markup=None)
+        await query.edit_message_reply_markup(reply_markup=None) # Remove keyboard after selection.
     except Exception as e:
         logger.debug(f"Could not remove reply markup: {e}")
-        pass
+        pass # Ignore errors if keyboard is already removed.
 
-    # Инициализация и очистка списка активных загрузок пользователя
-    active_downloads = context.user_data.setdefault('active_downloads', [])
-    active_downloads = [download for download in active_downloads if not download['task'].done()]
-    
-    # Проверка лимита одновременных загрузок
-    if len(active_downloads) >= 3:
-        await query.edit_message_text("У вас уже есть 3 активные загрузки. Пожалуйста, дождитесь их завершения.")
-        return
-    
-    # Создание новой задачи загрузки
+    # Start download in background.
     task = asyncio.create_task(handle_download(query, context, url_to_download, texts, requesting_user_id, download_type_for_handler))
-    
-    # Добавление новой задачи в список активных загрузок
-    active_downloads.append({
-        'task': task,
-        'type': download_type_for_handler,
-        'start_time': time.time()
-    })
-    context.user_data['active_downloads'] = active_downloads
-
-async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles the selection of a track from search results.
-    """
-    query = update.callback_query
-    await query.answer()  # Answer CallbackQuery to remove the 'clock'
-    user_id = query.from_user.id
-    logger.info(f"User {user_id} selected track from search: {query.data}")
-
-    # Parse callback_data: format is 'searchsel_{user_id}_{video_id}'
-    try:
-        _, sel_user_id, video_id = query.data.split("_")
-        sel_user_id = int(sel_user_id)
-
-        if user_id != sel_user_id:
-            logger.warning(f"User {user_id} tried to use another user's search select callback: {sel_user_id}")
-            await query.answer("Это не ваш запрос!", show_alert=True)
-            return
-
-        # Get user's language
-        user_lang = user_langs.get(str(user_id), "ru")
-        texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
-
-        # Form URL and store it
-        url = f"https://www.youtube.com/watch?v={video_id}"
-        context.user_data[f'url_for_download_{user_id}'] = url
-
-        # Show copyright warning
-        await query.edit_message_text(texts.get("copyright_pre"))
-
-        # Show format selection buttons
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("🎵 MP3", callback_data=f"dltype_audio_mp3_{user_id}"),
-                InlineKeyboardButton("🎵 M4A", callback_data=f"dltype_audio_m4a_{user_id}"),
-                InlineKeyboardButton("📹 MP4", callback_data=f"dltype_video_mp4_{user_id}")
-            ]
-        ])
-
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=texts.get("choose_download_type", "Выберите формат:"),
-            reply_markup=keyboard
-        )
-
-    except Exception as e:
-        logger.error(f"Error in search select callback for user {user_id}: {e}")
-        await query.edit_message_text("Произошла ошибка при выборе трека. Попробуйте повторить поиск.")
-
-async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles button callback queries.
-    """
-    query = update.callback_query
-    user_id = query.from_user.id
-    
-    try:
-        # Get user's language
-        user_lang = user_langs.get(str(user_id), "ru")
-        texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
-
-        # Confirm the callback query to remove the loading state
-        await query.answer()
-        
-        if query.data.startswith("dltype_"):
-            _, type_, format_, callback_user_id = query.data.split("_")
-            
-            # Verify that the user who clicked is the one who requested
-            if str(user_id) != callback_user_id:
-                await query.answer("Это не ваш запрос на скачивание!", show_alert=True)
-                return
-                
-            # Remove the keyboard
-            await query.edit_message_reply_markup(reply_markup=None)
-            
-            # Get the appropriate text based on the format
-            status_text = {
-                "mp3": texts.get("downloading_audio", "Скачиваю аудио... Пожалуйста, подождите."),
-                "m4a": texts.get("downloading_audio", "Скачиваю аудио... Пожалуйста, подождите."),
-                "mp4": texts.get("downloading_video", "Скачиваю видео... Пожалуйста, подождите.")
-            }.get(format_, texts.get("downloading_audio", "Скачиваю... Пожалуйста, подождите."))
-            
-            await query.edit_message_text(status_text)
-            
-            # Get URL from user data
-            url_to_download = context.user_data.get(f'url_for_download_{user_id}')
-            if not url_to_download:
-                await query.edit_message_text(texts.get("error", "Ошибка: ссылка не найдена"))
-                return
-
-            # Create download options based on format
-            download_type = None
-            if type_ == "audio":
-                if format_ == "mp3":
-                    download_type = "mp3"
-                elif format_ == "m4a":
-                    download_type = "m4a"
-            elif type_ == "video" and format_ == "mp4":
-                download_type = "mp4"
-
-            if download_type:
-                await handle_download(update_or_query=query, context=context, url=url_to_download,
-                                   texts=texts, user_id=user_id, download_type=download_type)
-            else:
-                await query.edit_message_text(texts.get("error", "Неподдерживаемый формат"))
-                return
-        # ...existing code...
-                
-    except Exception as e:
-        logger.error(f"Error in button handler: {str(e)}")
-        user_lang = user_langs.get(str(user_id), "ru")
-        texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
-        error_message = f"{texts.get('error', 'Что-то пошло не так.')} Ошибка: {str(e)}"
-        await query.message.reply_text(error_message)
-
-async def process_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
-    """
-    Process a URL message from user
-    """
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-    
-    # Get user's language
-    user_lang = user_langs.get(str(user_id), "ru")
-    texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
-
-    # Check if it's a valid YouTube/SoundCloud URL
-    if not (is_youtube_url(url) or is_soundcloud_url(url)):
-        await update.message.reply_text(
-            texts.get("not_youtube", "Это не поддерживаемая ссылка. Отправьте корректную ссылку на YouTube или SoundCloud.")
-        )
-        return
-
-    # Store the URL for the current user
-    global current_url
-    current_url = url
-
-    # Show format selection buttons
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("🎵 MP3", callback_data=f"dltype_audio_mp3_{user_id}"),
-            InlineKeyboardButton("🎵 M4A", callback_data=f"dltype_audio_m4a_{user_id}"),
-            InlineKeyboardButton("📹 MP4", callback_data=f"dltype_video_mp4_{user_id}")
-        ]
-    ])
-    
-    await update.message.reply_text(
-        texts.get("choose_download_type", "Выберите формат:"),
-        reply_markup=keyboard
-    )
-
-async def process_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE, query: str):
-    """
-    Process a search query from user
-    """
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-    
-    # Get user's language
-    user_lang = user_langs.get(str(user_id), "ru")
-    texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
-
-    if query.lower() == "/cancel":
-        await update.message.reply_text(texts.get("search_cancelled", "Поиск отменен."))
-        return
-
-    # Send "searching" message
-    await update.message.reply_text(texts.get("searching", "Ищу музыку..."))
-
-    try:
-        results = await search_youtube(query)
-        if not results:
-            await update.message.reply_text(texts.get("no_results", "Ничего не найдено. Попробуйте другой запрос."))
-            return
-
-        # Create inline keyboard with search results
-        keyboard = []
-        for result in results[:10]:  # Limit to 10 results
-            keyboard.append([InlineKeyboardButton(
-                f"🎵 {result['title']}",
-                callback_data=f"searchsel_{user_id}_{result['id']}"
-            )])
-
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(
-            texts.get("choose_track", "Выберите трек:"),
-            reply_markup=reply_markup
-        )
-    except Exception as e:
-        logger.error(f"Error during search: {str(e)}")
-        await update.message.reply_text(texts.get("error", "Произошла ошибка при поиске. Попробуйте позже."))
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles text messages from users
-    """
-    if not update.message or not update.message.text:
-        return
-
-    text = update.message.text
-    chat_id = update.message.chat_id
-    user_id = update.message.from_user.id
-
-    # Get user's language
-    user_lang = user_langs.get(str(user_id), "ru")
-    texts = LANGUAGES.get(user_lang, LANGUAGES["ru"])
-
-    # Проверка подписки
-    is_subscribed = await check_subscription(context.bot, chat_id)
-    if not is_subscribed:
-        channels_text = ", ".join(REQUIRED_CHANNELS)
-        await update.message.reply_text(
-            texts.get("not_subscribed", f"Для использования бота, подпишитесь на каналы:\n{channels_text}\n\nПосле подписки попробуйте снова.")
-        )
-        return
-
-    if is_url(text):
-        # Process URL
-        await process_url(update, context, text)
-    else:
-        # Process as search query
-        await process_search_query(update, context, text)
+    active_downloads = context.bot_data.setdefault('active_downloads', {})
+    active_downloads[requesting_user_id] = {'task': task}
 
 async def search_youtube(query: str):
     """
@@ -1502,14 +645,15 @@ async def search_youtube(query: str):
         return 'unsupported_url'
 
     ydl_opts = {
-        'quiet': True,
-        'skip_download': True,
-        'extract_flat': True,
-        'nocheckcertificate': True,
-        'default_search': None,
-        'noplaylist': True
+        'quiet': True, # Disable output messages.
+        'skip_download': True, # Skip download.
+        'extract_flat': True, # Extract only flat info list.
+        'nocheckcertificate': True, # Do not check SSL certificates.
+        'default_search': None, # Disable default search to control it.
+        'noplaylist': True # Do not extract playlists.
     }
     try:
+        # Search for top 10 results.
         search_query = f"ytsearch{SEARCH_RESULTS_LIMIT}:{query}"
         logger.info(f"Searching YouTube for query: {query}")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -1517,7 +661,7 @@ async def search_youtube(query: str):
             entries = info.get('entries', [])
             if entries is None:
                 logger.info(f"No entries found for YouTube search: {query}")
-                return []
+                return [] # Return empty list if entries is None.
             return entries[:SEARCH_RESULTS_LIMIT]
     except yt_dlp.utils.DownloadError as e:
         if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
@@ -1529,15 +673,32 @@ async def search_youtube(query: str):
         logger.critical(f"Unhandled error during YouTube search for {query}: {e}", exc_info=True)
         return []
 
+def is_url(text):
+    """
+    Checks if a string is a YouTube or SoundCloud URL.
+    """
+    text = text.lower().strip()
+    return (
+        text.startswith("http://") or text.startswith("https://")
+    ) and (
+        "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
+    )
+
+async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Starts the music search process.
+    """
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    logger.info(f"User {user_id} issued /search command.")
+    await update.message.reply_text(texts["search_prompt"])
+    context.user_data[f'awaiting_search_query_{user_id}'] = True
+
 async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Processes the user's search query and displays the results.
     """
-    if not context.user_data.get(f'awaiting_search_query_{update.effective_user.id}'):
-        logger.warning(f"User {update.effective_user.id} tried to search without awaiting query.")
-        await update.message.reply_text("Please start a search with /search first.")
-        return
-
     user_id = update.effective_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
@@ -1549,15 +710,14 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if results == 'unsupported_url':
         await update.message.reply_text(texts["unsupported_url_in_search"])
-        context.user_data.pop(f'awaiting_search_query_{user_id}', None)
+        context.user_data.pop(f'awaiting_search_query_{user_id}', None) # Reset awaiting query flag.
         return
 
-    if not isinstance(results, list):
+    if not isinstance(results, list): # Check that results is a list.
         results = []
 
     if not results:
         await update.message.reply_text(texts["no_results"])
-        logger.info(f"User {user_id} search returned no results for query: '{query_text}'")
         context.user_data.pop(f'awaiting_search_query_{user_id}', None)
         return
 
@@ -1571,67 +731,63 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
         texts["choose_track"],
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+    # Save search results for later selection.
     context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
-    context.user_data.pop(f'awaiting_search_query_{user_id}', None)
+    context.user_data.pop(f'awaiting_search_query_{user_id}', None) # Reset awaiting query flag.
     logger.info(f"User {user_id} received {len(results)} search results.")
 
-def is_youtube_url(url):
+async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Check if the URL is a valid YouTube URL.
+    Handles the selection of a track from search results.
     """
-    youtube_regex = (
-        r'(https?://)?(www\.)?'
-        '(youtube|youtu|youtube-nocookie)\.(com|be)/'
-        '(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
-    )
-    return bool(re.match(youtube_regex, url))
+    query = update.callback_query
+    await query.answer() # Answer CallbackQuery to remove the 'clock' from the button.
+    user_id = query.from_user.id
+    logger.info(f"User {user_id} selected track from search: {query.data}")
 
-def is_soundcloud_url(url):
-    """
-    Check if the URL is a valid SoundCloud URL.
-    """
-    return 'soundcloud.com' in url.lower()
+    try:
+        _, sel_user_id, video_id = query.data.split("_", 2)
+        sel_user_id = int(sel_user_id)
+    except Exception as e:
+        logger.error(f"Error parsing search select callback data for user {user_id}: {e} - Data: {query.data}")
+        await query.edit_message_text("Track selection error.")
+        return
 
-def is_url(text):
-    """
-    Checks if a string is a YouTube or SoundCloud URL.
-    """
-    text = text.lower().strip()
-    return (
-        text.startswith("http://") or text.startswith("https://")
-    ) and (
-        "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
+    if user_id != sel_user_id:
+        logger.warning(f"User {user_id} tried to use another user's search select callback: {sel_user_id}")
+        await query.edit_message_text("This button is not for you.")
+        return
+
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+
+    url = f"https://youtu.be/{video_id}" # Form URL from video ID.
+    await query.edit_message_text(texts["downloading_selected_track"], reply_markup=None) # Remove keyboard.
+
+    # Start download of selected track.
+    task = asyncio.create_task(
+        handle_download(query, context, url, texts, user_id, "audio_mp3")
     )
+    active_downloads = context.bot_data.setdefault('active_downloads', {})
+    active_downloads[user_id] = {'task': task}
 
 async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Smart message handler: determines if the message is a URL or a search query.
     """
-
-    # Проверка на наличие текста в сообщении
-    if not update.message or not update.message.text:
-        logger.warning("smart_message_handler: update.message или update.message.text отсутствует")
-        return
-
     user_id = update.effective_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
     text = update.message.text.strip()
     logger.info(f"User {user_id} sent message: '{text}'")
 
-    # Проверяем только активные загрузки текущего пользователя
-    active_downloads = context.user_data.setdefault('active_downloads', [])
-    # Очищаем завершенные загрузки
-    active_downloads = [download for download in active_downloads if not download['task'].done()]
-    context.user_data['active_downloads'] = active_downloads
-    
-    # Ограничиваем количество одновременных загрузок для одного пользователя
-    if len(active_downloads) >= 3:  # Максимум 3 одновременные загрузки для одного пользователя
-        await update.message.reply_text("У вас уже есть 3 активные загрузки. Пожалуйста, дождитесь их завершения.")
+    active_downloads = context.bot_data.setdefault('active_downloads', {})
+    if user_id in active_downloads and active_downloads[user_id].get('task') and not active_downloads[user_id]['task'].done():
+        await update.message.reply_text(texts["download_in_progress"])
         return
 
     # Check subscription before any message processing.
-    is_subscribed = await check_subscription(context.bot, user_id)
+    is_subscribed = await check_subscription(user_id, context.bot)
     if not is_subscribed:
         await update.message.reply_text(texts["not_subscribed"])
         return
@@ -1644,22 +800,9 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
         if context.user_data.get(f'awaiting_search_query_{user_id}'):
             await handle_search_query(update, context)
         else:
-            # If the user just wrote короткий текст (до 5 слов, ASCII), автоматически выполнить поиск с таймаутом
+            # If the user just wrote a word (e.g., Timeless), automatically perform a music search.
             if len(text.split()) <= 5 and text.isascii():
-                import time
-                global user_last_search_time
-                now = time.time()
-                search_cooldown = 5  # секунд
-                last_search = user_last_search_time.get(user_id, 0)
-                if now - last_search < search_cooldown:
-                    wait_sec = int(search_cooldown - (now - last_search))
-                    try:
-                        await update.message.reply_text(f"⏳ Пожалуйста, подождите {wait_sec} сек. перед следующим поиском.")
-                    except Exception:
-                        pass
-                    return
-                user_last_search_time[user_id] = now
-
+                # Auto-search for short texts (up to 5 words, ASCII)
                 logger.info(f"User {user_id} auto-search for: '{text}'")
                 await update.message.reply_text(texts["searching"])
                 results = await search_youtube(text)
@@ -1690,36 +833,23 @@ async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT
     texts = LANGUAGES[lang]
     logger.info(f"User {user_id} requested download cancellation.")
 
-    # Get active downloads from user_data instead of bot_data
-    active_downloads = context.user_data.get('active_downloads', [])
-    
-    # Find the active download task
-    active_download = None
-    for download in active_downloads:
-        if not download['task'].done():
-            active_download = download
-            break
+    active_downloads = context.bot_data.setdefault('active_downloads', {})
+    download = active_downloads.get(user_id)
 
-    if not active_download:
+    if not download or not download.get('task') or download['task'].done():
         try:
             await query.edit_message_text(texts["already_cancelled_or_done"])
         except Exception as e:
             logger.debug(f"Could not edit message for already cancelled/done download: {e}")
-            pass # Ignore error if message cannot be edited
+            pass # Ignore error if message cannot be edited (e.g., already changed).
         return
 
-    # Cancel the task
-    active_download['task'].cancel()
+    download['task'].cancel() # Cancel active download task.
     try:
         await query.edit_message_text(texts["cancelling"])
     except Exception as e:
         logger.debug(f"Could not edit message to 'cancelling': {e}")
-        pass # Ignore error if message cannot be edited
-    
-    # Remove cancelled task from active downloads
-    active_downloads = [d for d in active_downloads if d != active_download]
-    context.user_data['active_downloads'] = active_downloads
-    
+        pass # Ignore error if message cannot be edited.
     logger.info(f"Download task cancelled for user {user_id}.")
 
 
@@ -1733,136 +863,6 @@ async def copyright_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"User {user_id} issued /copyright command.")
     await update.message.reply_text(texts["copyright_command"])
 
-    # Получаем query из inline_query, если есть
-    query = getattr(update, 'inline_query', None)
-    if query:
-        query = query.query
-    else:
-        query = ''
-
-    if len(query) < 3:
-        # Показываем подсказку, если запрос слишком короткий
-        await update.inline_query.answer(
-            results=[
-                InlineQueryResultArticle(
-                    id="help",
-                    title="Введите минимум 3 символа",
-                    description="Например: The Weeknd - Starboy",
-                    input_message_content=InputTextMessageContent(
-                        message_text="Для поиска музыки введите минимум 3 символа"
-                    )
-                )
-            ],
-            cache_time=1
-        )
-        return
-    
-    logger.info(f"User {user_id} made inline query: {query}")
-    
-    # Показываем статус поиска
-    await update.inline_query.answer(
-        results=[
-            InlineQueryResultArticle(
-                id="searching",
-                title="🔍 Поиск...",
-                description=f"Ищем: {query}",
-                input_message_content=InputTextMessageContent(
-                    message_text="Выполняется поиск..."
-                )
-            )
-        ],
-        cache_time=1
-    )
-    
-    try:
-        results = await search_youtube(query)
-        logger.info(f"Search results for {query}: {len(results) if results else 0} items")
-        
-        if not results or not isinstance(results, list):
-            await update.inline_query.answer(
-                results=[
-                    InlineQueryResultArticle(
-                        id="no_results",
-                        title="Ничего не найдено",
-                        description="Попробуйте другой запрос",
-                        input_message_content=InputTextMessageContent(
-                            message_text="По вашему запросу ничего не найдено"
-                        )
-                    )
-                ],
-                cache_time=300
-            )
-            return
-        inline_results = []
-        for idx, entry in enumerate(results[:5]):  # Limit to 5 results for better UX
-            try:
-                title = entry.get('title', 'Unknown Title')
-                video_id = entry.get('id')
-                thumbnails = entry.get('thumbnails', [])
-                thumbnail = thumbnails[0]['url'] if thumbnails else None
-                duration = entry.get('duration', 0)
-                
-                # Format duration
-                duration_str = f"{duration//60}:{duration%60:02d}" if duration else "Unknown"
-                
-                # Создаем более информативное описание
-                channel = entry.get('channel', 'Unknown Artist')
-                views = entry.get('view_count', 0)
-                views_str = f"{views:,}" if views else "Unknown"
-                
-                description = f"👤 {channel}\n⏱ {duration_str}\n👁 {views_str} views"
-                
-                result = InlineQueryResultArticle(
-                    id=video_id,
-                    title=title,
-                    description=description,
-                    thumb_url=thumbnail,
-                    input_message_content=InputTextMessageContent(
-                        message_text=f"🎵 {title}\n👤 {channel}\n⏱ Duration: {duration_str}\n\n⏳ Preparing download..."
-                    ),
-                    reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton("⬇️ Download M4A", callback_data=f"idltype_audio_m4a_{user_id}_{video_id}")
-                    ]])
-                )
-                inline_results.append(result)
-                logger.info(f"Added result: {title} ({video_id})")
-            except Exception as e:
-                logger.error(f"Error processing search result: {e}")
-                continue
-        
-        if not inline_results:
-            # Если что-то пошло не так с обработкой результатов
-            await update.inline_query.answer([
-                InlineQueryResultArticle(
-                    id="error",
-                    title="Ошибка обработки результатов",
-                    description="Пожалуйста, попробуйте другой запрос",
-                    input_message_content=InputTextMessageContent(
-                        message_text="Произошла ошибка при обработке результатов поиска"
-                    )
-                )
-            ], cache_time=5)
-            return
-        
-        logger.info(f"Sending {len(inline_results)} results for query: {query}")
-        await update.inline_query.answer(inline_results, cache_time=300)
-        
-    except Exception as e:
-        logger.error(f"Error in inline search: {e}")
-        # Показываем ошибку пользователю
-        await update.inline_query.answer([
-            InlineQueryResultArticle(
-                id="error",
-                title="Произошла ошибка",
-                description="Пожалуйста, попробуйте позже",
-                input_message_content=InputTextMessageContent(
-                    message_text="Произошла ошибка при поиске. Пожалуйста, попробуйте позже."
-                )
-            )
-        ], cache_time=5)
-
-
-
 def main():
     """
     Main function to run the bot.
@@ -1874,55 +874,72 @@ def main():
         logger.info("Bot application built successfully.")
     except Exception as e:
         logger.critical(f"Failed to build bot application: {e}", exc_info=True)
+        # If an error occurs here, it is critical and execution should stop.
         raise
 
     # Add command handlers.
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", choose_language))
     app.add_handler(CommandHandler("languages", choose_language))
-    app.add_handler(CallbackQueryHandler(button))  # Добавляем обработчик для кнопок
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CommandHandler("search", search_command))
-    app.add_handler(CommandHandler("copyright", copyright_command))
-    app.add_handler(CommandHandler("stats", stats_command))
+    app.add_handler(CommandHandler("copyright", copyright_command)) # New /copyright command.
 
+    # Message handler for language selection (by button text).
     app.add_handler(MessageHandler(filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"), set_language))
+
+    # CallbackQuery handlers for download type selection and search selection.
     app.add_handler(CallbackQueryHandler(select_download_type_callback, pattern="^dltype_"))
     app.add_handler(CallbackQueryHandler(search_select_callback, pattern="^searchsel_"))
     app.add_handler(CallbackQueryHandler(cancel_download_callback, pattern="^cancel_"))
+
+    # Main text message handler (if not a command and not language selection).
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND & ~filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"),
         smart_message_handler
     ))
 
     async def set_commands(_):
+        """
+        Sets the bot commands in Telegram. These commands are displayed in the Telegram menu.
+        """
         logger.info("Setting bot commands.")
         await app.bot.set_my_commands([
             BotCommand("start", "Запуск и выбор языка / Start and choose language"),
             BotCommand("languages", "Сменить язык / Change language"),
-            BotCommand("search", "Поиск музыки (YouTube/SoundCloud) / Search music (YouTube/SoundCloud)"),
-            BotCommand("copyright", "Информация об авторских правах / Copyright info"),
-            BotCommand("stats", "Ваша статистика / Your stats")
+            BotCommand("search", "Поиск музыки (YouTube/SoundCloud) / Search music (YouTube/SoundCloud)"), # More universal description
+            BotCommand("copyright", "Информация об авторских правах / Copyright info") # More clear description
         ])
-    app.post_init = set_commands
+    app.post_init = set_commands # Run set_commands after application initialization.
     
     logger.info("Starting bot polling.")
     try:
-        app.run_polling()
+        app.run_polling() # Start the bot.
     except Exception as e:
         logger.critical(f"Bot polling failed: {e}", exc_info=True)
+        
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles the /start command: prompts to choose a language and sends copyright warning.
     """
     logger.info(f"User {update.effective_user.id} issued /start command.")
-    # Только меню выбора языка, без приветственного текста
     await choose_language(update, context)
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES[lang]
+    await update.message.reply_text(texts["copyright_post"])
 
 if __name__ == '__main__':
     main()
 
+
+
 # I have written additional lines of codes and "#" in the code for understanding and studying the code.
+
 # Developed and made by BitSamurai.
+
 # Thanks!
+
+
+# If you have any guestions about how code works & more. Text: copyrightytdlpbot@gmail.com
+# Telegram bot link: t.me/ytdlpload_bot
