@@ -25,10 +25,7 @@ cookies_path = os.getenv('COOKIES_PATH', 'youtube.com_cookies.txt')
 ffmpeg_path_from_env = os.getenv('FFMPEG_PATH')
 ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'   # Default path for ffmpeg
 FFMPEG_IS_AVAILABLE = os.path.exists(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK)   # Check if ffmpeg is available
-REQUIRED_CHANNELS = [
-    os.getenv("REQUIRED_CHANNEL_1", "@ytdlpdeveloper"),
-    os.getenv("REQUIRED_CHANNEL_2", "@samuraicodingrus")
-]
+REQUIRED_CHANNEL = os.getenv("REQUIRED_CHANNEL", "@ytdlpdeveloper")    # Channel to which users must be subscribed
 TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024 # 50 MB in bytes
 TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ" # Text representation of the file size limit 
 # File to store user language preferences
@@ -58,22 +55,21 @@ user_langs = {} # Dictionary for storing user language preferences
 LANGUAGES = {
     "ru": {
         "start": (
-            "👋 Привет! Я — музыкальный бот для скачивания аудио с YouTube и SoundCloud!\n\n"
-            "🔗 Просто отправьте ссылку на видео или трек, либо воспользуйтесь поиском по названию (/search).\n\n"
-            "🎵 Выберите нужный формат: MP3 или M4A (320kbps, с обложкой и тегами).\n"
-            "\n⚠️ Для использования бота подпишитесь на каналы: {channels}.\n"
-            "\n🌐 Веб-версия: youtubemusicdownloader.life\n"
-            "💡 Поддержка и новости: @ytdlpdeveloper, @samuraicodingrus\n"
-            "\nПриятного прослушивания!"
+            "Привет! Я бот для скачивания аудио с YouTube и SoundCloud.\n\n"
+            "Отправьте ссылку на YouTube или SoundCloud (видео или трек), и я предложу вам варианты загрузки аудио.\n\n" # Instructions for using the bot
+            f"Для работы с ботом, подпишитесь на канал {REQUIRED_CHANNEL}.\n" # Welcome message
+            "\n🎵 Также я умею искать музыку по названию! Просто напишите /search и найдите нужный трек.\n" # Search command
+            "Приятного использования! " # Welcome message
+            "Не забудьте подписаться на канал для обновлений и поддержки @ytdlpdeveloper. artoflife2303.github.io/miniblog " # Blog link
+            "Веб версия бота: youtubemusicdownloader.life, если не работает то bit.ly/ytmusicload" # Web version of the bot
         ),
-        "choose_lang": "Выберите язык / Choose language:",
-        "not_subscribed": "❗ Чтобы пользоваться ботом, подпишитесь на каналы: {channels} и попробуйте снова.",
+        "choose_lang": "Выберите язык / Choose language:", # Language selection prompt
+        "not_subscribed": f"Чтобы пользоваться ботом, подпишитесь на канал {REQUIRED_CHANNEL} и попробуйте снова.", # Subscription check message
         "checking": "Проверяю ссылку...", # Checking link message
         "not_youtube": "Это не поддерживаемая ссылка. Отправьте корректную ссылку на YouTube или SoundCloud.", # Not supported link message
-        "choose_download_type": "Выберите формат аудио:\n\n🎵 MP3 — стандартное качество (320kbps)\n🎶 M4A — высокое качество (320kbps, AAC)",
-        "audio_button_mp3": "🎵 MP3 (YouTube)",
-        "audio_button_m4a": "🎶 M4A (YouTube)",
-        "audio_button_sc": "🎵 MP3 (SoundCloud)",
+        "choose_download_type": "Выберите формат аудио:", # Download format selection prompt
+        "audio_button_mp3": "🎵 MP3 (YouTube)", 
+        "audio_button_sc": "🎵 MP3 (SoundCloud)", 
         "downloading_audio": "Скачиваю аудио... Подождите.", # Downloading audio message
         "download_progress": "Скачиваю: {percent} на скорости {speed}, осталось ~{eta}", # Download progress message
         "too_big": f"Файл слишком большой (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Попробуйте другое видео или трек.", # File size limit message
@@ -104,21 +100,20 @@ LANGUAGES = {
     },
     "en": {
         "start": (
-            "👋 Hello! I am a music bot for downloading audio from YouTube and SoundCloud!\n\n"
-            "🔗 Just send a link to a video or track, or use the search by name (/search).\n\n"
-            "🎵 Choose your format: MP3 or M4A (320kbps, with cover and tags).\n"
-            "\n⚠️ To use the bot, please subscribe to the channels: {channels}.\n"
-            "\n🌐 Web version: youtubemusicdownloader.life\n"
-            "💡 Support & news: @ytdlpdeveloper, @samuraicodingrus\n"
-            "\nEnjoy!"
+            "Hello! I am a bot for downloading audio from YouTube and SoundCloud. # Welcome message"
+            "Send a YouTube or SoundCloud link (video or track), and I will offer you audio download options."
+            f"To use the bot, please subscribe to the channel {REQUIRED_CHANNEL}."
+            "\n🎵 I can also search for music by name! Just type /search and find your track."
+            "Enjoy!" # Instructions for using the bot
+            "Don't forget to subscribe to the channel for updates and support @ytdlpdeveloper. artoflife2303.github.io/miniblog. " # Blog link
+            "Web version of the bot: youtubemusicdownloader.life, if it doesn't work then bit.ly/ytmusicload" # Web version link
         ),
         "choose_lang": "Choose language:",
-        "not_subscribed": "❗ To use the bot, please subscribe to the channels: {channels} and try again.",
+        "not_subscribed": f"To use the bot, please subscribe to {REQUIRED_CHANNEL} and try again.",
         "checking": "Checking link...",
         "not_youtube": "This is not a supported link. Please send a valid YouTube or SoundCloud link.",
-        "choose_download_type": "Choose audio format:\n\n🎵 MP3 — standard quality (320kbps)\n🎶 M4A — high quality (320kbps, AAC)",
+        "choose_download_type": "Choose audio format:",
         "audio_button_mp3": "🎵 MP3 (YouTube)",
-        "audio_button_m4a": "🎶 M4A (YouTube)",
         "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Downloading audio... Please wait.",
         "download_progress": "Downloading: {percent} at {speed}, ETA ~{eta}",
@@ -150,21 +145,20 @@ LANGUAGES = {
     },
     "es": {
         "start": (
-            "👋 ¡Hola! Soy un bot musical para descargar audio de YouTube y SoundCloud!\n\n"
-            "🔗 Solo envía un enlace de video o pista, o usa la búsqueda por nombre (/search).\n\n"
-            "🎵 Elige el formato: MP3 o M4A (320kbps, con portada y etiquetas).\n"
-            "\n⚠️ Para usar el bot, suscríbete a los canales: {channels}.\n"
-            "\n� Versión web: youtubemusicdownloader.life\n"
-            "💡 Soporte y noticias: @ytdlpdeveloper, @samuraicodingrus\n"
-            "\n¡Disfruta!"
+            "¡Hola! Soy un bot para descargar audio de YouTube y SoundCloud."
+            "Envíame un enlace de YouTube o SoundCloud (video o pista) y te ofreceré opciones para descargar el audio."
+            f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL}."
+            "\n🎵 ¡También puedo buscar música por nombre! Escribe /search y encuentra tu pista."
+            "¡Disfruta!"
+            "No olvides suscribirte al canal para actualizaciones y soporte @ytdlpdeveloper. artoflife2303.github.io/miniblog. "
+            "Versión web del bot: youtubemusicdownloader.life, si no funciona entonces bit.ly/ytmusicload"
         ),
         "choose_lang": "Elige idioma:",
-        "not_subscribed": "❗ Para usar el bot, suscríbete a los canales: {channels} y vuelve a intentarlo.",
+        "not_subscribed": f"Para usar el bot, suscríbete al canal {REQUIRED_CHANNEL} y vuelve a intentarlo.",
         "checking": "Verificando enlace...",
         "not_youtube": "Este enlace no es compatible. Por favor, envía un enlace válido de YouTube o SoundCloud.",
-        "choose_download_type": "Elige el formato de audio:\n\n🎵 MP3 — calidad estándar (320kbps)\n🎶 M4A — alta calidad (320kbps, AAC)",
+        "choose_download_type": "Elige el formato de audio:",
         "audio_button_mp3": "🎵 MP3 (YouTube)",
-        "audio_button_m4a": "🎶 M4A (YouTube)",
         "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Descargando audio... Por favor espera.",
         "download_progress": "Descargando: {percent} a {speed}, queda ~{eta}",
@@ -196,21 +190,20 @@ LANGUAGES = {
     },
     "tr": {
         "start": (
-            "👋 Merhaba! Ben YouTube ve SoundCloud'dan müzik indirmek için bir botum!\n\n"
-            "🔗 Sadece bir video veya parça bağlantısı gönderin ya da isimle arama yapın (/search).\n\n"
-            "🎵 Formatı seçin: MP3 veya M4A (320kbps, kapak ve etiketlerle).\n"
-            "\n⚠️ Botu kullanmak için şu kanallara abone olun: {channels}.\n"
-            "\n🌐 Web sürümü: youtubemusicdownloader.life\n"
-            "💡 Destek ve haberler: @ytdlpdeveloper, @samuraicodingrus\n"
-            "\nİyi eğlenceler!"
+            "Merhaba! Ben YouTube ve SoundCloud'dan ses indirmek için bir botum."
+            "YouTube veya SoundCloud bağlantısı gönderin (video veya parça), size ses indirme seçenekleri sunacağım."
+            f"Botu kullanmak için {REQUIRED_CHANNEL} kanalına abone olun."
+            "\n🎵 Ayrıca isimle müzik arayabilirim! Sadece /search yazın ve parçanızı bulun."
+            "İyi eğlenceler!"
+            "Botu kullanmak için kanala abone olmayı unutmayın @ytdlpdeveloper. artoflife2303.github.io/miniblog "
+            "Web bot versiyonu: youtubemusicdownloader.life, eğer çalışmıyorsa hbit.ly/ytmusicload"
         ),
         "choose_lang": "Dil seçin:",
-        "not_subscribed": "❗ Botu kullanmak için lütfen şu kanallara abone olun: {channels} ve tekrar deneyin.",
+        "not_subscribed": f"Botu kullanmak için lütfen {REQUIRED_CHANNEL} kanalına abone olun ve tekrar deneyin.",
         "checking": "Bağlantı kontrol ediliyor...",
         "not_youtube": "Bu desteklenmeyen bir bağlantı. Lütfen geçerli bir YouTube veya SoundCloud bağlantısı gönderin.",
-        "choose_download_type": "Ses formatı seçin:\n\n🎵 MP3 — standart kalite (320kbps)\n🎶 M4A — yüksek kalite (320kbps, AAC)",
+        "choose_download_type": "Ses formatı seçin:",
         "audio_button_mp3": "🎵 MP3 (YouTube)",
-        "audio_button_m4a": "🎶 M4A (YouTube)",
         "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Ses indiriliyor... Lütfen bekleyin.",
         "download_progress": "İndiriliyor: {percent} hızında {speed}, kalan ~{eta}",
@@ -242,21 +235,20 @@ LANGUAGES = {
     },
     "ar": {
         "start": (
-            "👋 مرحبًا! أنا بوت موسيقي لتنزيل الصوت من YouTube و SoundCloud!\n\n"
-            "🔗 فقط أرسل رابط فيديو أو مقطع، أو استخدم البحث بالاسم (/search).\n\n"
-            "🎵 اختر الصيغة: MP3 أو M4A (320kbps، مع الغلاف والوسوم).\n"
-            "\n⚠️ لاستخدام البوت، يرجى الاشتراك في القنوات: {channels}.\n"
-            "\n🌐 النسخة الويب: youtubemusicdownloader.life\n"
-            "💡 الدعم والأخبار: @ytdlpdeveloper، @samuraicodingrus\n"
-            "\nاستمتع!"
+            "مرحبًا! أنا بوت لتنزيل الصوت من YouTube و SoundCloud."
+            "أرسل رابط YouTube أو SoundCloud (فيديو أو مسار) وسأقدم لك خيارات تنزيل الصوت."
+            f"لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNEL}."
+            "🎵 يمكنني أيضًا البحث عن الموسيقى بالاسم! ما عليك سوى كتابة /search والعثور على المسار الخاص بك."
+            "استمتع!"
+            "لا تنس الاشتراك في القناة للحصول على التحديثات والدعم @ytdlpdeveloper. artoflife2303.github.io/miniblog. "
+            "النسخة الويب من البوت: youtubemusicdownloader.life، إذا لم تعمل، فجرّب bit.ly/ytmusicload"
         ),
         "choose_lang": "اختر اللغة:",
-        "not_subscribed": "❗ لاستخدام البوت، يرجى الاشتراك في القنوات: {channels} والمحاولة مرة أخرى.",
+        "not_subscribed": f"لاستخدام البوت، يرجى الاشتراك في قناة {REQUIRED_CHANNEL} والمحاولة مرة أخرى.",
         "checking": "جاري التحقق من الرابط...",
         "not_youtube": "هذا ليس رابطًا مدعومًا. يرجى إرسال رابط YouTube أو SoundCloud صالح.",
-        "choose_download_type": "اختر تنسيق الصوت:\n\n🎵 MP3 — جودة قياسية (320kbps)\n🎶 M4A — جودة عالية (320kbps، AAC)",
+        "choose_download_type": "اختر تنسيق الصوت:",
         "audio_button_mp3": "🎵 MP3 (يوتيوب)",
-        "audio_button_m4a": "🎶 M4A (يوتيوب)",
         "audio_button_sc": "🎵 MP3 (ساوند كلاود)",
         "downloading_audio": "جاري تنزيل الصوت... يرجى الانتظار.",
         "download_progress": "جاري التنزيل: {percent} بسرعة {speed}، متبقي ~{eta}",
@@ -288,21 +280,20 @@ LANGUAGES = {
     },
     "az": {
         "start": (
-            "👋 Salam! Mən YouTube və SoundCloud-dan musiqi yükləmək üçün botam!\n\n"
-            "🔗 Sadəcə video və ya trek linki göndərin və ya adla axtarış edin (/search).\n\n"
-            "🎵 Formatı seçin: MP3 və ya M4A (320kbps, üz qabığı və teqlərlə).\n"
-            "\n⚠️ Botdan istifadə üçün bu kanallara abunə olun: {channels}.\n"
-            "\n🌐 Veb versiya: youtubemusicdownloader.life\n"
-            "💡 Dəstək və yeniliklər: @ytdlpdeveloper, @samuraicodingrus\n"
-            "\nƏylənin!"
+            "Salam! Mən YouTube və SoundCloud-dan səs yükləmək üçün bir botam."
+            "YouTube və ya SoundCloud linki (video və ya trek) göndərin, sizə səs yükləmə seçimləri təklif edəcəm."
+            f"Botdan istifadə etmək üçün {REQUIRED_CHANNEL} kanalına abunə olun."
+            "\n🎵 Həmçinin adla musiqi axtara bilərəm! Sadəcə /search yazın və trekinizi tapın."
+            "Əylənin!"
+            "Yeniliklər və dəstək üçün kanala abunə olmağı unutmayın @ytdlpdeveloper. artoflife2303.github.io/miniblog. "
+            "Botun veb versiyası: youtubemusicdownloader.life, əgər işləmirsə bit.ly/ytmusicload"
         ),
         "choose_lang": "Dil seçin:",
-        "not_subscribed": "❗ Botdan istifadə etmək üçün zəhmət olmasa bu kanallara abunə olun: {channels} və yenidən cəhd edin.",
+        "not_subscribed": f"Botdan istifadə etmək üçün zəhmət olmasa {REQUIRED_CHANNEL} kanalına abunə olun və yenidən cəhd edin.",
         "checking": "Link yoxlanılır...",
         "not_youtube": "Bu dəstəklənməyən bir bağlantıdır. Zəhmət olmasa, etibarlı bir YouTube və ya SoundCloud linki göndərin.",
-        "choose_download_type": "Səs formatını seçin:\n\n🎵 MP3 — standart keyfiyyət (320kbps)\n🎶 M4A — yüksək keyfiyyət (320kbps, AAC)",
+        "choose_download_type": "Səs formatını seçin:",
         "audio_button_mp3": "🎵 MP3 (YouTube)",
-        "audio_button_m4a": "🎶 M4A (YouTube)",
         "audio_button_sc": "🎵 MP3 (SoundCloud)",
         "downloading_audio": "Səs yüklənir... Zəhmət olmasa gözləyin.",
         "download_progress": "Yüklənir: {percent} sürətlə {speed}, qalıb ~{eta}",
@@ -401,17 +392,14 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def check_subscription(user_id: int, bot) -> bool:
     """
-    Checks if the user is subscribed to all required channels.
+    Checks if the user is subscribed to the required channel.
     """
-    for channel in REQUIRED_CHANNELS:
-        try:
-            member = await bot.get_chat_member(channel, user_id)
-            if member.status not in ("member", "administrator", "creator"):
-                return False
-        except Exception as e:
-            logger.error(f"Error checking subscription for user {user_id} in {channel}: {e}")
-            return False
-    return True
+    try:
+        member = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
+        return member.status in ("member", "administrator", "creator")
+    except Exception as e:
+        logger.error(f"Error checking subscription for user {user_id}: {e}")
+        return False
 
 def blocking_yt_dlp_download(ydl_opts, url_to_download):
     """
@@ -494,37 +482,27 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             progress_text = texts["download_progress"].format(percent=percent_str, speed=speed_str, eta=eta_str)
             asyncio.run_coroutine_threadsafe(update_status_message_async(progress_text), loop)
 
-
     try:
         status_message = await context.bot.send_message(chat_id=chat_id, text=texts["downloading_audio"], reply_markup=cancel_keyboard)
         temp_dir = tempfile.mkdtemp()
         ydl_opts = {
             'outtmpl': os.path.join(temp_dir, '%(title).140B - Made by @ytdlpload_bot Developed by BitSamurai [%(id)s].%(ext)s'),
-            'format': 'bestaudio[abr>=320]/bestaudio/best',  # Try to get 320kbps or best available
+            'format': 'bestaudio/best',
             'cookiefile': cookies_path if os.path.exists(cookies_path) else None,
             'progress_hooks': [progress_hook],
             'nocheckcertificate': True,
             'quiet': True,
             'no_warnings': True,
             'ffmpeg_location': ffmpeg_path if FFMPEG_IS_AVAILABLE else None,
-            'postprocessors': [
-                {
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '320',  # 320kbps
-                },
-                {
-                    'key': 'EmbedThumbnail',
-                },
-                {
-                    'key': 'FFmpegMetadata',
-                }
-            ],
-            'writethumbnail': True,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192K',
+            }],
             'postprocessor_args': {
                 'FFmpegExtractAudio': ['-metadata', 'comment=Made by @ytdlpload_bot']
             },
-            'verbose': True
+            'verbose': True # Enable verbose output to see what errors occur.
         }
         # Remove None values from ydl_opts to avoid errors.
         ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
@@ -537,86 +515,23 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                 await update_status_message_async("The link is not supported. Please check the link or try another query.", show_cancel_button=False)
                 return
             logger.error(f"Error during yt-dlp download for {url}: {e}")
-            raise
+            raise # Re-raise exception after logging.
 
-        # Find audio and thumbnail files
         downloaded_files_info = []
         all_temp_files = os.listdir(temp_dir)
-        audio_files = []
-        thumb_files = []
         for file_name in all_temp_files:
             file_path = os.path.join(temp_dir, file_name)
             file_ext_lower = os.path.splitext(file_name)[1].lower()
+            base_title = os.path.splitext(file_name.split(" [")[0])[0] # Extract title from file name.
             if file_ext_lower in [".mp3", ".m4a", ".webm", ".ogg", ".opus", ".aac"]:
-                audio_files.append(file_path)
-            elif file_ext_lower in [".jpg", ".jpeg", ".png", ".webp"]:
-                thumb_files.append(file_path)
+                downloaded_files_info.append((file_path, base_title))
 
-        if not audio_files:
+        if not downloaded_files_info:
             await update_status_message_async(texts["error"] + " (file not found)", show_cancel_button=False)
             return
 
-        # Try to extract metadata (artist, title) from yt-dlp info json if available
-        info_json_path = None
-        for file_name in all_temp_files:
-            if file_name.endswith('.info.json'):
-                info_json_path = os.path.join(temp_dir, file_name)
-                break
-        artist = None
-        title = None
-        if info_json_path:
-            try:
-                with open(info_json_path, 'r', encoding='utf-8') as f:
-                    info = json.load(f)
-                # Try to get artist and title from info
-                artist = info.get('artist')
-                if not artist:
-                    # Try uploader or channel
-                    artist = info.get('uploader') or info.get('channel')
-                title = info.get('track') or info.get('title')
-                # Remove artist from title if present
-                if artist and title and artist in title:
-                    # Remove artist from title (e.g. "The Weeknd - Starboy" -> "Starboy")
-                    title = title.replace(artist, '').strip(' -')
-            except Exception as e:
-                logger.warning(f"Could not parse info.json for metadata: {e}")
-
-        # Fallbacks
-        if not title:
-            # Use filename without extension and bot tag
-            title = os.path.splitext(os.path.basename(audio_files[0]))[0]
-            if ' - Made by @ytdlpload_bot' in title:
-                title = title.split(' - Made by @ytdlpload_bot')[0]
-        if not artist:
-            artist = '@ytdlpload_bot'
-
-        # Find a thumbnail (prefer png, else convert)
-        thumb_path = None
-        for t in thumb_files:
-            if t.lower().endswith('.png'):
-                thumb_path = t
-                break
-        if not thumb_path and thumb_files:
-            # Convert first thumbnail to png (limit 200kb)
-            try:
-                from PIL import Image
-                img = Image.open(thumb_files[0])
-                thumb_path = os.path.join(temp_dir, 'cover.png')
-                img.save(thumb_path, format='PNG', optimize=True)
-                # If >200kb, try to reduce size
-                for quality in [90, 80, 70, 60, 50]:
-                    if os.path.getsize(thumb_path) <= 200*1024:
-                        break
-                    img.save(thumb_path, format='PNG', optimize=True, quality=quality)
-                if os.path.getsize(thumb_path) > 200*1024:
-                    logger.warning(f"Thumbnail still >200kb after compression: {thumb_path}")
-                    thumb_path = None
-            except Exception as e:
-                logger.warning(f"Could not convert thumbnail to PNG: {e}")
-                thumb_path = None
-
-        total_files = len(audio_files)
-        for i, file_to_send in enumerate(audio_files):
+        total_files = len(downloaded_files_info)
+        for i, (file_to_send, title_str) in enumerate(downloaded_files_info):
             await update_status_message_async(texts["sending_file"].format(index=i+1, total=total_files))
             file_size = os.path.getsize(file_to_send)
 
@@ -626,19 +541,11 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
 
             try:
                 with open(file_to_send, 'rb') as f_send:
-                    thumb_arg = None
-                    if thumb_path and os.path.exists(thumb_path) and os.path.getsize(thumb_path) <= 200*1024:
-                        thumb_arg = open(thumb_path, 'rb')
                     await context.bot.send_audio(
-                        chat_id=chat_id,
-                        audio=f_send,
-                        title=title if title else os.path.basename(file_to_send),
-                        performer=artist,
-                        filename=os.path.basename(file_to_send),
-                        thumb=thumb_arg
+                        chat_id=chat_id, audio=f_send, title=title_str,
+                        filename=os.path.basename(file_to_send)
                     )
-                    if thumb_arg:
-                        thumb_arg.close()
+                # Send copyright message after sending each file
                 await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_post"))
                 logger.info(f"Successfully sent audio for {url} to user {user_id}")
             except Exception as e:
