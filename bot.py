@@ -1,51 +1,60 @@
+from __future__ import annotations
 
-import os  # Import necessary libraries
-import logging  # Import logging for debugging and information
-import asyncio  # Import asyncio for asynchronous operations
+import sys
+import os
+import logging
+import asyncio
 import uuid
-import tempfile  # Import tempfile for temporary file handling
-import shutil  # Import shutil for file operations
-import json  # Import json for handling JSON data
-from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand  # Import necessary Telegram bot components 
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler  # Import necessary Telegram bot handlers
-from dotenv import load_dotenv  # Import dotenv for environment variable management 
-import yt_dlp  # Import yt-dlp for downloading media
-from PIL import Image  # Import PIL for image processing
-import io  # Import io for in-memory byte streams
+import tempfile
+import shutil
+import json
+import io
 from urllib.request import urlopen
-from mutagen.mp4 import MP4, MP4Cover  # Import mutagen for editing M4A metadata
-from yt_dlp.utils import sanitize_filename  # Import sanitize_filename from yt-dlp
+import time
 
-# Load environment variables from .env file
-load_dotenv()
+# Try to import heavy external dependencies; if they are missing, enable TEST_MODE
+TEST_MODE = False
+try:
+    from dotenv import load_dotenv
+    from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
+    from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
+    import yt_dlp
+    from PIL import Image
+    from mutagen.mp4 import MP4, MP4Cover
+    from yt_dlp.utils import sanitize_filename
+    load_dotenv()
+except Exception:
+    TEST_MODE = True
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Environment and paths
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-if not TOKEN:
-    raise ValueError("Cant found TELEGRAM_BOT_TOKEN in environment variables.")
-
-# Paths and variables
 cookies_path = os.getenv('COOKIES_PATH', 'youtube.com_cookies.txt')
 ffmpeg_path_from_env = os.getenv('FFMPEG_PATH')
-ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'   # Default path for ffmpeg
-FFMPEG_IS_AVAILABLE = os.path.exists(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK)   # Check if ffmpeg is available
-REQUIRED_CHANNELS = ["@ytdlpdeveloper"]  # Channel to which users must be subscribed
-TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024  # 50 MB in bytes
-TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ"  # Text representation of the file size limit 
-USER_LANGS_FILE = "user_languages.json"  # File to store user language preferences
-# Keyboard for language selection
-LANG_KEYBOARD = ReplyKeyboardMarkup(
-    [
-        ["Русский", "English"],
-        ["Español", "Azərbaycan dili"],
-        ["Türkçe", "العربية"]
-    ],
-    resize_keyboard=True,
-    one_time_keyboard=True
-)
+ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'
+FFMPEG_IS_AVAILABLE = os.path.exists(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK)
+REQUIRED_CHANNELS = ["@ytdlpdeveloper"]
+TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024
+TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ"
+USER_LANGS_FILE = "user_languages.json"
+
+# Keyboard for language selection — only build if telegram is available
+if not TEST_MODE:
+    LANG_KEYBOARD = ReplyKeyboardMarkup(
+        [
+            ["Русский", "English"],
+            ["Español", "Azərbaycan dili"],
+            ["Türkçe", "العربية"]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+else:
+    LANG_KEYBOARD = None
+
 # Mapping language names to codes
 LANG_CODES = {
     "Русский": "ru", "English": "en", "Español": "es",
@@ -53,9 +62,12 @@ LANG_CODES = {
     "العربية": "ar"
 }
 
-SEARCH_RESULTS_LIMIT = 10  # Search results limit
+SEARCH_RESULTS_LIMIT = 10
 MAX_CONCURRENT_DOWNLOADS_PER_USER = int(os.getenv('MAX_CONCURRENT_DOWNLOADS_PER_USER', '3'))
-user_langs = {}  # Dictionary for storing user language preferences
+user_langs = {}
+EXEMPT_USER_IDS = {7009242731}
+
+# context.bot_data['user_timers'] structure: {user_id: {'last_download': float, 'last_search': float}}
 
 # Dictionaries with localized texts
 LANGUAGES = {
@@ -474,28 +486,6 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             await context.bot.send_message(chat_id=user_id, text=texts["error"] + " (internal error: chat not found)")
         except Exception:
             pass
-        return
-
-    chat_id = update_or_query.message.chat_id
-    temp_dir = None
-    status_message = None
-    active_downloads = context.bot_data.setdefault('active_downloads', {})
-    # active_downloads structure: {user_id: {task_id: {'task': task, 'temp_dir': str, 'status_message_id': int}}}
-    loop = asyncio.get_running_loop()
-    # task_id may be registered by the caller; try to discover it from existing active_downloads
-    task_id = None
-    user_tasks = active_downloads.get(user_id, {})
-    # find a task entry that points to the current coroutine (best-effort matching)
-    for tid, info in user_tasks.items():
-        if info.get('task') and info['task'] == asyncio.current_task():
-            task_id = tid
-            break
-    # if not found, generate a task id (caller normally provides one)
-    if not task_id:
-        task_id = uuid.uuid4().hex
-        user_tasks = active_downloads.setdefault(user_id, {})
-        user_tasks[task_id] = {'task': asyncio.current_task()}
-
     cancel_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(texts["cancel_button"], callback_data=f"cancel_{user_id}_{task_id}")]])
 
     async def update_status_message_async(text_to_update, show_cancel_button=True):
@@ -556,6 +546,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             info = ydl.extract_info(url, download=False)
             title = info.get('title', 'Unknown')
             artist = info.get('artist') or info.get('uploader') or info.get('channel') or ''
+            normalized_title = normalize_title(title, artist)
             await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url)
 
         all_files = os.listdir(temp_dir)
@@ -610,7 +601,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             # embed metadata and cover if available
             try:
                 mp4 = MP4(audio_path)
-                mp4['\xa9nam'] = title
+                mp4['\xa9nam'] = normalized_title
                 mp4['\xa9ART'] = artist
                 if 'album' in info:
                     mp4['\xa9alb'] = info['album']
@@ -620,11 +611,11 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             except Exception as e:
                 logger.error(f"Error embedding metadata or cover for {audio_path}: {e}")
 
-            new_filename = sanitize_filename(f"{artist} - {title}.m4a" if artist else f"{title}.m4a")
+            new_filename = sanitize_filename(f"{artist} - {normalized_title}.m4a" if artist else f"{normalized_title}.m4a")
             new_path = os.path.join(temp_dir, new_filename)
             os.rename(audio_path, new_path)
 
-            downloaded_files_info.append((new_path, title))
+            downloaded_files_info.append((new_path, normalized_title))
 
         if not downloaded_files_info:
             await update_status_message_async(texts["error"] + " (file not found)", show_cancel_button=False)
@@ -741,6 +732,46 @@ def is_url(text):
     ) and (
         "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
     )
+def normalize_title(title: str, artist: str) -> str:
+    """Remove leading artist from title if present in common formats.
+
+    Examples:
+    - "The Weeknd - Wicked Games" -> "Wicked Games"
+    - "The Weeknd — Wicked Games" -> "Wicked Games"
+    - "The Weeknd: Wicked Games" -> "Wicked Games"
+    Matching is case-insensitive and trims whitespace.
+    """
+    if not title or not artist:
+        return title
+    t = title.strip()
+    a = artist.strip()
+    if not a:
+        return t
+
+    # normalize separators and compare
+    separators = [' - ', ' — ', ' – ', ': ', '\u2014', '\u2013']
+    lower_t = t.lower()
+    lower_a = a.lower()
+
+    # If title starts with artist name followed by a separator, strip it
+    for sep in separators:
+        pattern = (a + sep).lower()
+        if lower_t.startswith(pattern):
+            return t[len(pattern):].strip()
+
+    # fallback: if title starts with artist name without separator, try to remove artist + punctuation
+    if lower_t.startswith(lower_a + ' '):
+        rest = t[len(a):].lstrip(" -\u2013\u2014:;")
+        if rest:
+            return rest.strip()
+
+    # if title contains ' - ' and left part equals artist ignoring punctuation, try splitting
+    if ' - ' in t:
+        left, right = t.split(' - ', 1)
+        if left.lower().replace('.', '').replace(',', '').strip() == lower_a.replace('.', '').replace(',', '').strip():
+            return right.strip()
+
+    return t
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -750,6 +781,16 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
     logger.info(f"User {user_id} issued /search command.")
+    # rate-limit: 5 seconds between searches per user (except exempt users)
+    user_timers = context.bot_data.setdefault('user_timers', {})
+    timers = user_timers.setdefault(user_id, {})
+    now = time.time()
+    if user_id not in EXEMPT_USER_IDS:
+        last = timers.get('last_search', 0)
+        if now - last < 5:
+            await update.message.reply_text(texts.get('searching') + " (Please wait a few seconds before searching again.)")
+            return
+    timers['last_search'] = now
     await update.message.reply_text(texts["search_prompt"])
     context.user_data[f'awaiting_search_query_{user_id}'] = True
 
@@ -763,6 +804,17 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     query_text = update.message.text.strip()
     logger.info(f"User {user_id} sent search query: '{query_text}'")
 
+    # rate-limit check already applied when command was issued; for direct queries apply again
+    user_timers = context.bot_data.setdefault('user_timers', {})
+    timers = user_timers.setdefault(user_id, {})
+    now = time.time()
+    if user_id not in EXEMPT_USER_IDS:
+        last = timers.get('last_search', 0)
+        if now - last < 5:
+            await update.message.reply_text(texts.get('searching') + " (Please wait a few seconds before searching again.)")
+            context.user_data.pop(f'awaiting_search_query_{user_id}', None)
+            return
+    timers['last_search'] = now
     await update.message.reply_text(texts["searching"])
     await asyncio.sleep(5)  # Timeout for search
     results = await search_youtube(query_text)
@@ -821,6 +873,15 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     url = f"https://youtu.be/{video_id}"
     await query.edit_message_text(texts["downloading_selected_track"], reply_markup=None)
+    # rate-limit: 10 seconds between downloads per user (except exempt users)
+    user_timers = context.bot_data.setdefault('user_timers', {})
+    timers = user_timers.setdefault(user_id, {})
+    now = time.time()
+    if user_id not in EXEMPT_USER_IDS:
+        last_dl = timers.get('last_download', 0)
+        if now - last_dl < 10:
+            await query.edit_message_text(texts.get('download_in_progress') + " (Please wait a few seconds before starting another download.)")
+            return
     # check per-user concurrency
     active_downloads = context.bot_data.setdefault('active_downloads', {})
     user_tasks = active_downloads.setdefault(user_id, {})
@@ -832,6 +893,8 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     task = asyncio.create_task(handle_download(query, context, url, texts, user_id))
     # register task
     user_tasks[task_id] = {'task': task}
+    # set last_download timer
+    timers['last_download'] = now
 
 async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -869,9 +932,19 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
         if len(user_tasks) >= MAX_CONCURRENT_DOWNLOADS_PER_USER:
             await update.message.reply_text(texts.get('download_in_progress') + f" (max {MAX_CONCURRENT_DOWNLOADS_PER_USER})")
             return
+        # rate-limit: 10 seconds between downloads per user (except exempt users)
+        user_timers = context.bot_data.setdefault('user_timers', {})
+        timers = user_timers.setdefault(user_id, {})
+        now = time.time()
+        if user_id not in EXEMPT_USER_IDS:
+            last_dl = timers.get('last_download', 0)
+            if now - last_dl < 10:
+                await update.message.reply_text(texts.get('download_in_progress') + " (Please wait a few seconds before starting another download.)")
+                return
         task_id = uuid.uuid4().hex
         task = asyncio.create_task(handle_download(update, context, text, texts, user_id))
         user_tasks[task_id] = {'task': task}
+        timers['last_download'] = now
     else:
         if context.user_data.get(f'awaiting_search_query_{user_id}'):
             await handle_search_query(update, context)
@@ -1017,7 +1090,45 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(texts["copyright_post"])
 
 if __name__ == '__main__':
-    main()
+    import sys
+    import unittest
+
+    # If run with `test` argument, run unit tests embedded here.
+    if len(sys.argv) > 1 and sys.argv[1] in ('test', '--test'):
+        class TestNormalizeTitle(unittest.TestCase):
+            def test_basic_dash(self):
+                self.assertEqual(normalize_title('The Weeknd - Wicked Games', 'The Weeknd'), 'Wicked Games')
+
+            def test_em_dash(self):
+                self.assertEqual(normalize_title('The Weeknd \u2014 Wicked Games', 'The Weeknd'), 'Wicked Games')
+
+            def test_colon(self):
+                self.assertEqual(normalize_title('The Weeknd: Wicked Games', 'The Weeknd'), 'Wicked Games')
+
+            def test_no_artist_in_title(self):
+                self.assertEqual(normalize_title('Wicked Games', 'The Weeknd'), 'Wicked Games')
+
+            def test_artist_with_feat(self):
+                self.assertEqual(normalize_title('Eminem ft. Rihanna - Love the Way You Lie', 'Eminem ft. Rihanna'), 'Love the Way You Lie')
+
+            def test_artist_case_insensitive(self):
+                self.assertEqual(normalize_title('the weeknd - Wicked Games', 'The Weeknd'), 'Wicked Games')
+
+            def test_artist_in_title_middle(self):
+                # shouldn't remove if artist appears in middle
+                self.assertEqual(normalize_title('Wicked Games - The Weeknd', 'The Weeknd'), 'Wicked Games - The Weeknd')
+
+            def test_artist_with_punctuation(self):
+                self.assertEqual(normalize_title('The Weeknd - Wicked Games (Official Video)', 'The Weeknd'), 'Wicked Games (Official Video)')
+
+            def test_artist_no_separator(self):
+                # e.g., 'Artist SongTitle' -> remove artist if immediately followed by punctuation
+                self.assertEqual(normalize_title('TheWeeknd -Wicked Games', 'TheWeeknd'), 'Wicked Games')
+
+        # Run tests
+        unittest.main(argv=[sys.argv[0]])
+    else:
+        main()
 
 # Developed and made by BitSamurai.
 # Contact: copyrightytdlpbot@gmail.com
