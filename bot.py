@@ -1,60 +1,52 @@
-from __future__ import annotations
 
-import sys
-import os
-import logging
-import asyncio
+import os  # Import necessary libraries
+import logging  # Import logging for debugging and information
+import asyncio  # Import asyncio for asynchronous operations
 import uuid
-import tempfile
-import shutil
-import json
-import io
+import tempfile  # Import tempfile for temporary file handling
+import shutil  # Import shutil for file operations
+import json  # Import json for handling JSON data
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand  # Import necessary Telegram bot components 
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler  # Import necessary Telegram bot handlers
+from dotenv import load_dotenv  # Import dotenv for environment variable management 
+import yt_dlp  # Import yt-dlp for downloading media
+from PIL import Image  # Import PIL for image processing
+import io  # Import io for in-memory byte streams
 from urllib.request import urlopen
 import time
+from mutagen.mp4 import MP4, MP4Cover  # Import mutagen for editing M4A metadata
+from yt_dlp.utils import sanitize_filename  # Import sanitize_filename from yt-dlp
 
-# Try to import heavy external dependencies; if they are missing, enable TEST_MODE
-TEST_MODE = False
-try:
-    from dotenv import load_dotenv
-    from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
-    from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
-    import yt_dlp
-    from PIL import Image
-    from mutagen.mp4 import MP4, MP4Cover
-    from yt_dlp.utils import sanitize_filename
-    load_dotenv()
-except Exception:
-    TEST_MODE = True
+# Load environment variables from .env file
+load_dotenv()
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Environment and paths
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    raise ValueError("Cant found TELEGRAM_BOT_TOKEN in environment variables.")
+
+# Paths and variables
 cookies_path = os.getenv('COOKIES_PATH', 'youtube.com_cookies.txt')
 ffmpeg_path_from_env = os.getenv('FFMPEG_PATH')
-ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'
-FFMPEG_IS_AVAILABLE = os.path.exists(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK)
-REQUIRED_CHANNELS = ["@ytdlpdeveloper"]
-TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024
-TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ"
-USER_LANGS_FILE = "user_languages.json"
-
-# Keyboard for language selection — only build if telegram is available
-if not TEST_MODE:
-    LANG_KEYBOARD = ReplyKeyboardMarkup(
-        [
-            ["Русский", "English"],
-            ["Español", "Azərbaycan dili"],
-            ["Türkçe", "العربية"]
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=True
-    )
-else:
-    LANG_KEYBOARD = None
-
+ffmpeg_path = ffmpeg_path_from_env if ffmpeg_path_from_env else '/usr/bin/ffmpeg'   # Default path for ffmpeg
+FFMPEG_IS_AVAILABLE = os.path.exists(ffmpeg_path) and os.access(ffmpeg_path, os.X_OK)   # Check if ffmpeg is available
+REQUIRED_CHANNELS = ["@ytdlpdeveloper"]  # Channel to which users must be subscribed
+TELEGRAM_FILE_SIZE_LIMIT_BYTES = 50 * 1024 * 1024  # 50 MB in bytes
+TELEGRAM_FILE_SIZE_LIMIT_TEXT = "50 МБ"  # Text representation of the file size limit 
+USER_LANGS_FILE = "user_languages.json"  # File to store user language preferences
+# Keyboard for language selection
+LANG_KEYBOARD = ReplyKeyboardMarkup(
+    [
+        ["Русский", "English"],
+        ["Español", "Azərbaycan dili"],
+        ["Türkçe", "العربية"]
+    ],
+    resize_keyboard=True,
+    one_time_keyboard=True
+)
 # Mapping language names to codes
 LANG_CODES = {
     "Русский": "ru", "English": "en", "Español": "es",
@@ -62,9 +54,9 @@ LANG_CODES = {
     "العربية": "ar"
 }
 
-SEARCH_RESULTS_LIMIT = 10
+SEARCH_RESULTS_LIMIT = 10  # Search results limit
 MAX_CONCURRENT_DOWNLOADS_PER_USER = int(os.getenv('MAX_CONCURRENT_DOWNLOADS_PER_USER', '3'))
-user_langs = {}
+user_langs = {}  # Dictionary for storing user language preferences
 EXEMPT_USER_IDS = {7009242731}
 
 # context.bot_data['user_timers'] structure: {user_id: {'last_download': float, 'last_search': float}}
@@ -486,6 +478,28 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             await context.bot.send_message(chat_id=user_id, text=texts["error"] + " (internal error: chat not found)")
         except Exception:
             pass
+        return
+
+    chat_id = update_or_query.message.chat_id
+    temp_dir = None
+    status_message = None
+    active_downloads = context.bot_data.setdefault('active_downloads', {})
+    # active_downloads structure: {user_id: {task_id: {'task': task, 'temp_dir': str, 'status_message_id': int}}}
+    loop = asyncio.get_running_loop()
+    # task_id may be registered by the caller; try to discover it from existing active_downloads
+    task_id = None
+    user_tasks = active_downloads.get(user_id, {})
+    # find a task entry that points to the current coroutine (best-effort matching)
+    for tid, info in user_tasks.items():
+        if info.get('task') and info['task'] == asyncio.current_task():
+            task_id = tid
+            break
+    # if not found, generate a task id (caller normally provides one)
+    if not task_id:
+        task_id = uuid.uuid4().hex
+        user_tasks = active_downloads.setdefault(user_id, {})
+        user_tasks[task_id] = {'task': asyncio.current_task()}
+
     cancel_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(texts["cancel_button"], callback_data=f"cancel_{user_id}_{task_id}")]])
 
     async def update_status_message_async(text_to_update, show_cancel_button=True):
@@ -732,46 +746,7 @@ def is_url(text):
     ) and (
         "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
     )
-def normalize_title(title: str, artist: str) -> str:
-    """Remove leading artist from title if present in common formats.
-
-    Examples:
-    - "The Weeknd - Wicked Games" -> "Wicked Games"
-    - "The Weeknd — Wicked Games" -> "Wicked Games"
-    - "The Weeknd: Wicked Games" -> "Wicked Games"
-    Matching is case-insensitive and trims whitespace.
-    """
-    if not title or not artist:
-        return title
-    t = title.strip()
-    a = artist.strip()
-    if not a:
-        return t
-
-    # normalize separators and compare
-    separators = [' - ', ' — ', ' – ', ': ', '\u2014', '\u2013']
-    lower_t = t.lower()
-    lower_a = a.lower()
-
-    # If title starts with artist name followed by a separator, strip it
-    for sep in separators:
-        pattern = (a + sep).lower()
-        if lower_t.startswith(pattern):
-            return t[len(pattern):].strip()
-
-    # fallback: if title starts with artist name without separator, try to remove artist + punctuation
-    if lower_t.startswith(lower_a + ' '):
-        rest = t[len(a):].lstrip(" -\u2013\u2014:;")
-        if rest:
-            return rest.strip()
-
-    # if title contains ' - ' and left part equals artist ignoring punctuation, try splitting
-    if ' - ' in t:
-        left, right = t.split(' - ', 1)
-        if left.lower().replace('.', '').replace(',', '').strip() == lower_a.replace('.', '').replace(',', '').strip():
-            return right.strip()
-
-    return t
+from utils import normalize_title
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -1090,45 +1065,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(texts["copyright_post"])
 
 if __name__ == '__main__':
-    import sys
-    import unittest
-
-    # If run with `test` argument, run unit tests embedded here.
-    if len(sys.argv) > 1 and sys.argv[1] in ('test', '--test'):
-        class TestNormalizeTitle(unittest.TestCase):
-            def test_basic_dash(self):
-                self.assertEqual(normalize_title('The Weeknd - Wicked Games', 'The Weeknd'), 'Wicked Games')
-
-            def test_em_dash(self):
-                self.assertEqual(normalize_title('The Weeknd \u2014 Wicked Games', 'The Weeknd'), 'Wicked Games')
-
-            def test_colon(self):
-                self.assertEqual(normalize_title('The Weeknd: Wicked Games', 'The Weeknd'), 'Wicked Games')
-
-            def test_no_artist_in_title(self):
-                self.assertEqual(normalize_title('Wicked Games', 'The Weeknd'), 'Wicked Games')
-
-            def test_artist_with_feat(self):
-                self.assertEqual(normalize_title('Eminem ft. Rihanna - Love the Way You Lie', 'Eminem ft. Rihanna'), 'Love the Way You Lie')
-
-            def test_artist_case_insensitive(self):
-                self.assertEqual(normalize_title('the weeknd - Wicked Games', 'The Weeknd'), 'Wicked Games')
-
-            def test_artist_in_title_middle(self):
-                # shouldn't remove if artist appears in middle
-                self.assertEqual(normalize_title('Wicked Games - The Weeknd', 'The Weeknd'), 'Wicked Games - The Weeknd')
-
-            def test_artist_with_punctuation(self):
-                self.assertEqual(normalize_title('The Weeknd - Wicked Games (Official Video)', 'The Weeknd'), 'Wicked Games (Official Video)')
-
-            def test_artist_no_separator(self):
-                # e.g., 'Artist SongTitle' -> remove artist if immediately followed by punctuation
-                self.assertEqual(normalize_title('TheWeeknd -Wicked Games', 'TheWeeknd'), 'Wicked Games')
-
-        # Run tests
-        unittest.main(argv=[sys.argv[0]])
-    else:
-        main()
+    main()
 
 # Developed and made by BitSamurai.
 # Contact: copyrightytdlpbot@gmail.com
