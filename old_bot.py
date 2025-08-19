@@ -13,6 +13,7 @@ import yt_dlp  # Import yt-dlp for downloading media
 from PIL import Image  # Import PIL for image processing
 import io  # Import io for in-memory byte streams
 from urllib.request import urlopen
+from urllib.parse import urlparse, parse_qs, quote_plus
 from mutagen.mp4 import MP4, MP4Cover  # Import mutagen for editing M4A metadata
 from yt_dlp.utils import sanitize_filename  # Import sanitize_filename from yt-dlp
 
@@ -551,12 +552,57 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         }
         ydl_opts = {k: v for k, v in ydl_opts.items() if v is not None}
 
-        logger.info(f"Starting download for {url} by user {user_id} (task {task_id})")
+        # Prefer YouTube Music links when possible to get richer metadata (artist, track, featured, thumbnails)
+        def convert_to_ytmusic(original_url: str) -> str:
+            """Convert standard YouTube/watch or youtu.be links to music.youtube.com watch links.
+            Leave other URLs untouched.
+            """
+            try:
+                u = original_url.strip()
+                if 'music.youtube.com' in u:
+                    return u
+                # short youtu.be links
+                if 'youtu.be/' in u:
+                    parts = u.split('/')
+                    vid = parts[-1].split('?')[0]
+                    return f'https://music.youtube.com/watch?v={vid}'
+                parsed = urlparse(u)
+                if 'youtube.com' in parsed.netloc:
+                    qs = parse_qs(parsed.query)
+                    v = qs.get('v')
+                    if v:
+                        return f'https://music.youtube.com/watch?v={v[0]}'
+                return original_url
+            except Exception:
+                return original_url
+
+        url_to_use = convert_to_ytmusic(url)
+        logger.info(f"Starting download for {url} (using {url_to_use}) by user {user_id} (task {task_id})")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            title = info.get('title', 'Unknown')
-            artist = info.get('artist') or info.get('uploader') or info.get('channel') or ''
-            await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url)
+            info = ydl.extract_info(url_to_use, download=False)
+            # Prefer music-specific fields when available
+            title = info.get('track') or info.get('title') or 'Unknown'
+            # artist may be a string or a list under 'artists'
+            artist = ''
+            if info.get('artist'):
+                artist = info.get('artist')
+            elif info.get('artists') and isinstance(info.get('artists'), (list, tuple)):
+                artist = ', '.join([a.get('name') if isinstance(a, dict) else str(a) for a in info.get('artists')])
+            else:
+                artist = info.get('uploader') or info.get('channel') or ''
+            # put featured artists into title if present
+            if not info.get('track') and '-' in title and not artist:
+                # try split 'Artist - Title'
+                parts = title.split('-')
+                if len(parts) >= 2:
+                    possible_artist = parts[0].strip()
+                    possible_title = '-'.join(parts[1:]).strip()
+                    if possible_artist and possible_title:
+                        artist = possible_artist
+                        title = possible_title
+
+        # perform the blocking download with the (possibly converted) URL
+        await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url_to_use)
 
         all_files = os.listdir(temp_dir)
         audio_files = [f for f in all_files if f.endswith('.m4a')]
@@ -610,10 +656,39 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             # embed metadata and cover if available
             try:
                 mp4 = MP4(audio_path)
+                # Title / track
                 mp4['\xa9nam'] = title
-                mp4['\xa9ART'] = artist
-                if 'album' in info:
-                    mp4['\xa9alb'] = info['album']
+                # Artist: try multiple possible fields
+                tag_artist = artist
+                if not tag_artist and info.get('album_artist'):
+                    tag_artist = info.get('album_artist')
+                if not tag_artist and info.get('uploader'):
+                    tag_artist = info.get('uploader')
+                mp4['\xa9ART'] = tag_artist or ''
+
+                # Album
+                if info.get('album'):
+                    mp4['\xa9alb'] = info.get('album')
+
+                # Year / release date
+                if info.get('release_year'):
+                    mp4['\xa9day'] = str(info.get('release_year'))
+                elif info.get('release_date'):
+                    mp4['\xa9day'] = str(info.get('release_date'))
+
+                # Add composer/performer fields for featured artists if available
+                if info.get('artists') and isinstance(info.get('artists'), (list, tuple)):
+                    performers = []
+                    for a in info.get('artists'):
+                        if isinstance(a, dict):
+                            name = a.get('name')
+                        else:
+                            name = str(a)
+                        if name:
+                            performers.append(name)
+                    if performers:
+                        mp4['\xa9ART'] = ', '.join(performers)
+
                 if jpeg_data:
                     mp4['covr'] = [MP4Cover(jpeg_data, imageformat=MP4Cover.FORMAT_JPEG)]
                 mp4.save()
@@ -703,6 +778,7 @@ async def search_youtube(query: str):
     if is_url(query):
         return 'unsupported_url'
 
+    # Try YouTube Music search page first to get music-specific metadata (track, artists, album, thumbnails)
     ydl_opts = {
         'quiet': True,
         'skip_download': True,
@@ -712,15 +788,63 @@ async def search_youtube(query: str):
         'noplaylist': True
     }
     try:
-        search_query = f"ytsearch{SEARCH_RESULTS_LIMIT}:{query}"
-        logger.info(f"Searching YouTube for query: {query}")
+        # Build a YT Music search URL
+        safe_q = quote_plus(query)
+        music_search_url = f"https://music.youtube.com/search?q={safe_q}"
+        logger.info(f"Searching YouTube Music for query: {query}")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(search_query, download=False)
-            entries = info.get('entries', [])
-            if entries is None:
-                logger.info(f"No entries found for YouTube search: {query}")
+            info = ydl.extract_info(music_search_url, download=False)
+            # yt-dlp may return 'entries' in different shapes for music search; try to normalize
+            entries = []
+            if isinstance(info, dict):
+                if info.get('entries'):
+                    entries = info.get('entries')
+                elif info.get('results'):
+                    entries = info.get('results')
+            elif isinstance(info, list):
+                entries = info
+            # Helper: decide if an entry is an audio/music track (prefer these)
+            def is_music_entry(e: dict) -> bool:
+                try:
+                    if not isinstance(e, dict):
+                        return False
+                    # direct music-specific fields
+                    if e.get('track'):
+                        return True
+                    if e.get('artists'):
+                        return True
+                    # extractor key / ie_key containing music
+                    ie = str(e.get('ie_key') or e.get('extractor') or '').lower()
+                    if 'music' in ie:
+                        return True
+                    # youtube music urls
+                    url = e.get('url') or e.get('webpage_url') or ''
+                    if 'music.youtube.com' in url:
+                        return True
+                    # reasonable duration (shorter tracks) and not live
+                    dur = e.get('duration')
+                    if isinstance(dur, (int, float)) and dur > 0 and dur < 10 * 60:
+                        if not e.get('is_live'):
+                            return True
+                except Exception:
+                    return False
+                return False
+
+            # Filter for music-like entries
+            music_entries = [ent for ent in entries if is_music_entry(ent)] if entries else []
+            # If we got no music-like results, fall back to standard ytsearch
+            if not music_entries:
+                logger.info(f"No music-specific entries from YT Music search, falling back to ytsearch for query: {query}")
+                search_query = f"ytsearch{SEARCH_RESULTS_LIMIT}:{query}"
+                info = ydl.extract_info(search_query, download=False)
+                entries = info.get('entries', []) or []
+                music_entries = [ent for ent in entries if is_music_entry(ent)] or entries
+            if not music_entries:
+                logger.info(f"No entries found for search: {query}")
                 return []
-            return entries[:SEARCH_RESULTS_LIMIT]
+            # Ensure a list and slice to limit
+            results_list = music_entries if isinstance(music_entries, list) else list(music_entries)
+            return results_list[:SEARCH_RESULTS_LIMIT]
     except yt_dlp.utils.DownloadError as e:
         if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
             logger.warning(f"Unsupported URL in search query: {query}")
@@ -739,7 +863,7 @@ def is_url(text):
     return (
         text.startswith("http://") or text.startswith("https://")
     ) and (
-        "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text
+    "youtube.com/" in text or "youtu.be/" in text or "soundcloud.com/" in text or "music.youtube.com/" in text
     )
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -764,7 +888,7 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     logger.info(f"User {user_id} sent search query: '{query_text}'")
 
     await update.message.reply_text(texts["searching"])
-    await asyncio.sleep(5)  # Timeout for search
+    # perform search immediately (no artificial delay)
     results = await search_youtube(query_text)
 
     if results == 'unsupported_url':
@@ -783,16 +907,17 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     keyboard = []
     for idx, entry in enumerate(results):
         title = entry.get('title', texts["no_results"])
-        video_id = entry.get('id')
-        keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{video_id}")])
+        # Use index in callback_data to avoid invalid/too-long callback payloads
+        keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{idx}")])
 
     await update.message.reply_text(
         texts["choose_track"],
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-    context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
+    # Store the full results list (by index) so callback handlers can retrieve safely
+    context.user_data[f'search_results_{user_id}'] = results
     context.user_data.pop(f'awaiting_search_query_{user_id}', None)
-    logger.info(f"User {user_id} received {len(results)} search results.")
+    logger.info(f"User {user_id} receied {len(results)} search results.")
 
 async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -804,8 +929,9 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     logger.info(f"User {user_id} selected track from search: {query.data}")
 
     try:
-        _, sel_user_id, video_id = query.data.split("_", 2)
+        _, sel_user_id, idx_str = query.data.split("_", 2)
         sel_user_id = int(sel_user_id)
+        sel_index = int(idx_str)
     except Exception as e:
         logger.error(f"Error parsing search select callback data for user {user_id}: {e} - Data: {query.data}")
         await query.edit_message_text("Track selection error.")
@@ -819,7 +945,28 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
 
-    url = f"https://youtu.be/{video_id}"
+    # Retrieve the selected entry from stored search results
+    stored = context.user_data.get(f'search_results_{sel_user_id}')
+    if not stored or not isinstance(stored, (list, tuple)):
+        await query.edit_message_text("Search results expired or invalid. Please /search again.")
+        return
+    if sel_index < 0 or sel_index >= len(stored):
+        await query.edit_message_text("Invalid selection index. Please /search again.")
+        return
+    entry = stored[sel_index]
+    video_id = entry.get('id') or entry.get('url') or ''
+    # Prefer music.youtube.com URLs if present
+    url = ''
+    if entry.get('webpage_url') and 'music.youtube.com' in str(entry.get('webpage_url')):
+        url = entry.get('webpage_url')
+    elif entry.get('url') and 'music.youtube.com' in str(entry.get('url')):
+        url = entry.get('url')
+    elif video_id:
+        # video_id may already be a full URL or an id
+        if video_id.startswith('http'):
+            url = video_id
+        else:
+            url = f"https://youtu.be/{video_id}"
     await query.edit_message_text(texts["downloading_selected_track"], reply_markup=None)
     # check per-user concurrency
     active_downloads = context.bot_data.setdefault('active_downloads', {})
@@ -879,7 +1026,7 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
             if len(text.split()) <= 5 and text.isascii():
                 logger.info(f"User {user_id} auto-search for: '{text}'")
                 await update.message.reply_text(texts["searching"])
-                await asyncio.sleep(5)  # Timeout for auto-search
+                # perform search immediately (no artificial delay)
                 results = await search_youtube(text)
                 if not results or results == 'unsupported_url':
                     await update.message.reply_text(texts["no_results"])
@@ -887,13 +1034,13 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
                 keyboard = []
                 for idx, entry in enumerate(results):
                     title = entry.get('title', texts["no_results"])
-                    video_id = entry.get('id')
-                    keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{video_id}")])
+                    keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{idx}")])
                 await update.message.reply_text(
                     texts["choose_track"],
                     reply_markup=InlineKeyboardMarkup(keyboard)
                 )
-                context.user_data[f'search_results_{user_id}'] = {entry.get('id'): entry for entry in results}
+                # store results as list, keyed by index
+                context.user_data[f'search_results_{user_id}'] = results
             else:
                 await update.message.reply_text(texts["url_error_generic"])
 
