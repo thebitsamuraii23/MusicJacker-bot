@@ -14,7 +14,9 @@ from PIL import Image  # Import PIL for image processing
 import io  # Import io for in-memory byte streams
 from urllib.request import urlopen
 from urllib.parse import urlparse, parse_qs, quote_plus
-from mutagen.mp4 import MP4, MP4Cover  # Import mutagen for editing M4A metadata
+from mutagen.mp4 import MP4, MP4Cover  # keep for compatibility if needed
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB, TDRC, ID3NoHeaderError
 from yt_dlp.utils import sanitize_filename  # Import sanitize_filename from yt-dlp
 
 # Load environment variables from .env file
@@ -63,7 +65,7 @@ LANGUAGES = {
     "ru": {
         "start": (
             "👋 Привет! Добро пожаловать в музыкального бота! 🎶\n\n"
-            "Я помогу скачать аудио из YouTube и SoundCloud в формате M4A.\n\n"
+            "Я помогу скачать аудио из YouTube и SoundCloud в формате MP3 (320 kbps).\n\n"
             "🔗 Просто отправьте ссылку на видео или трек — и получите музыку!\n\n"
             f"📢 Для работы подпишитесь на канал {REQUIRED_CHANNELS[0]}.\n\n"
             "🔍 Хотите найти трек по названию? Используйте команду /search и выберите нужную песню!\n\n"
@@ -89,15 +91,15 @@ LANGUAGES = {
         "already_cancelled_or_done": "Загрузка уже отменена или завершена.",
         "url_error_generic": "Не удалось обработать URL. Убедитесь, что это корректная ссылка на YouTube или SoundCloud.",
         "search_prompt": (
-            "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрузится в формате M4A.\n"
+            "Введите название трека или исполнителя. После чего, нажмите на музыку, она загрузится в формате MP3 (320 kbps).\n"
             "Введите /cancel для отмены поиска.\n"
             "Введите /search для поиска музыки по названию (YouTube)."
         ),
         "searching": "Ищу музыку...",
         "unsupported_url_in_search": "Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос. (Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)",
         "no_results": "Ничего не найдено. Попробуйте другой запрос.",
-        "choose_track": "Выберите трек для скачивания M4A:",
-        "downloading_selected_track": "Скачиваю выбранный трек в M4A...",
+    "choose_track": "Выберите трек для скачивания в MP3 (320 kbps):",
+    "downloading_selected_track": "Скачиваю выбранный трек в MP3 (320 kbps)...",
         "copyright_pre": "⚠️ Внимание! Загружаемый вами материал может быть защищён авторским правом. Используйте только для личных целей. Если вы являетесь правообладателем и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com для удаления контента.",
         "copyright_post": "⚠️ Данный материал может быть защищён авторским правом. Используйте только для личных целей. Если вы правообладатель и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com.",
         "copyright_command": "⚠️ Внимание! Все материалы, скачиваемые через этого бота, могут быть защищены авторским правом. Используйте только для личных целей. Если вы правообладатель и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com, и мы удалим соответствующий контент."
@@ -105,7 +107,7 @@ LANGUAGES = {
     "en": {
         "start": (
             "👋 Hello! Welcome to the music bot! 🎶\n\n"
-            "I can help you download audio from YouTube and SoundCloud in M4A format.\n\n"
+            "I can help you download audio from YouTube and SoundCloud in MP3 format (320 kbps).\n\n"
             "🔗 Just send a link to a video or track — and get your music!\n\n"
             f"📢 To use the bot, please subscribe to the channel {REQUIRED_CHANNELS[0]}.\n\n"
             "🔍 Want to search for a song by name? Use /search and pick your favorite!\n\n"
@@ -131,15 +133,15 @@ LANGUAGES = {
         "already_cancelled_or_done": "Download already cancelled or completed.",
         "url_error_generic": "Failed to process URL. Make sure it's a valid YouTube or SoundCloud link.",
         "search_prompt": (
-            "Enter the track name or artist. Then click on the music, it will download in M4A format.\n"
+            "Enter the track name or artist. Then click on the music, it will download in MP3 format (320 kbps).\n"
             "Enter /cancel to cancel the search.\n"
             "Enter /search to search for music by name (YouTube)."
         ),
         "searching": "Searching for music...",
         "unsupported_url_in_search": "The link is not supported. Please check the link or try another query. (Alternatively, if it didn't work, you can download a track from another artist or Remix)",
         "no_results": "Nothing found. Try another query.",
-        "choose_track": "Select a track to download in M4A:",
-        "downloading_selected_track": "Downloading the selected track in M4A...",
+    "choose_track": "Select a track to download in MP3 (320 kbps):",
+    "downloading_selected_track": "Downloading the selected track in MP3 (320 kbps)...",
         "copyright_pre": "⚠️ Warning! The material you are about to download may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, please contact copyrightytdlpbot@gmail.com for removal.",
         "copyright_post": "⚠️ This material may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, contact copyrightytdlpbot@gmail.com.",
         "copyright_command": "⚠️ Warning! All materials downloaded via this bot may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, contact copyrightytdlpbot@gmail.com and we will remove the content."
@@ -147,7 +149,7 @@ LANGUAGES = {
     "es": {
         "start": (
             "👋 ¡Hola! ¡Bienvenido al bot musical! 🎶\n\n"
-            "Te ayudo a descargar audio de YouTube y SoundCloud en formato M4A.\n\n"
+            "Te ayudo a descargar audio de YouTube y SoundCloud en formato MP3 (320 kbps).\n\n"
             "🔗 Solo envía un enlace de video o pista — ¡y recibe tu música!\n\n"
             f"📢 Para usar el bot, suscríbete al canal {REQUIRED_CHANNELS[0]}.\n\n"
             "🔍 ¿Quieres buscar una canción por nombre? Usa /search y elige tu favorita.\n\n"
@@ -173,15 +175,15 @@ LANGUAGES = {
         "already_cancelled_or_done": "La descarga ya fue cancelada o completada.",
         "url_error_generic": "No se pudo procesar la URL. Asegúrate de que sea un enlace válido de YouTube o SoundCloud.",
         "search_prompt": (
-            "Ingrese el nombre de la pista o artista. Luego haga clic en la música, se descargará en formato M4A.\n"
+            "Ingrese el nombre de la pista o artista. Luego haga clic en la música, se descargará en formato MP3 (320 kbps).\n"
             "Ingrese /cancel para cancelar la búsqueda.\n"
             "Ingrese /search para buscar música por nombre (YouTube)."
         ),
         "searching": "Buscando música...",
         "unsupported_url_in_search": "El enlace no es compatible. Por favor, compruebe el enlace o pruebe con otra consulta. (Alternativamente, si no funcionó, puede descargar una pista de otro artista o un Remix)",
         "no_results": "No se encontraron resultados. Intente con otra consulta.",
-        "choose_track": "Seleccione una pista para descargar en M4A:",
-        "downloading_selected_track": "Descargando la pista seleccionada en M4A...",
+    "choose_track": "Seleccione una pista para descargar en MP3 (320 kbps):",
+    "downloading_selected_track": "Descargando la pista seleccionada en MP3 (320 kbps)...",
         "copyright_pre": "⚠️ ¡Atención! El material que está a punto de descargar puede estar protegido por derechos de autor. Úselo solo para fines personales. Si es titular de derechos y cree que se están violando sus derechos, escriba a copyrightytdlpbot@gmail.com para eliminar el contenido.",
         "copyright_post": "⚠️ Este material puede estar protegido por derechos de autor. Úselo solo para fines personales. Si es titular de derechos y cree que se están violando sus derechos, escriba a copyrightytdlpbot@gmail.com.",
         "copyright_command": "⚠️ ¡Atención! Todo el material descargado a través de este bot puede estar protegido por derechos de autor. Úselo solo para fines personales. Si es titular de derechos y cree que se están violando sus derechos, escriba a copyrightytdlpbot@gmail.com y eliminaremos el contenido."
@@ -189,7 +191,7 @@ LANGUAGES = {
     "tr": {
         "start": (
             "👋 Merhaba! Müzik botuna hoş geldin! 🎶\n\n"
-            "YouTube ve SoundCloud'dan M4A formatında ses indirmen için buradayım.\n\n"
+            "YouTube ve SoundCloud'dan MP3 (320 kbps) formatında ses indirmen için buradayım.\n\n"
             "🔗 Sadece bir video veya parça bağlantısı gönder — müziğin hazır!\n\n"
             f"📢 Botu kullanmak için {REQUIRED_CHANNELS[0]} kanalına abone olmalısın.\n\n"
             "🔍 Şarkı ismiyle arama yapmak ister misin? /search yaz ve favorini seç!\n\n"
@@ -215,15 +217,15 @@ LANGUAGES = {
         "already_cancelled_or_done": "İndirme zaten iptal edildi veya tamamlandı.",
         "url_error_generic": "URL işlenemedi. Geçerli bir YouTube veya SoundCloud bağlantısı olduğundan emin olun.",
         "search_prompt": (
-            "Parça adı veya sanatçı adı girin. Ardından müziğe tıklayın, M4A formatında indirilecektir.\n"
+            "Parça adı veya sanatçı adı girin. Ardından müziğe tıklayın, MP3 (320 kbps) formatında indirilecektir.\n"
             "Aramayı iptal etmek için /cancel yazın.\n"
             "Müzik adıyla arama yapmak için /search yazın (YouTube)."
         ),
         "searching": "Müzik aranıyor...",
         "unsupported_url_in_search": "Bağlantı desteklenmiyor. Lütfen bağlantıyı kontrol edin veya başka bir sorgu deneyin. (Alternatif olarak, işe yaramadıysa, başka bir sanatçıdan veya Remix bir parça indirebilirsiniz)",
         "no_results": "Hiçbir sonuç bulunamadı. Başka bir sorgu deneyin.",
-        "choose_track": "M4A olarak indirmek için bir parça seçin:",
-        "downloading_selected_track": "Seçilen parça M4A olarak indiriliyor...",
+    "choose_track": "MP3 (320 kbps) olarak indirmek için bir parça seçin:",
+    "downloading_selected_track": "Seçilen parça MP3 (320 kbps) olarak indiriliyor...",
         "copyright_pre": "⚠️ Dikkat! İndirmek üzere olduğunuz materyal telif hakkı ile korunabilir. Yalnızca kişisel kullanım için kullanın. Eğer telif hakkı sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın.",
         "copyright_post": "⚠️ Bu materyal telif hakkı ile korunabilir. Yalnızca kişisel kullanım için kullanın. Eğer telif hakkı sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın.",
         "copyright_command": "⚠️ Dikkat! Bu bot aracılığıyla indirilen tüm materyaller telif hakkı ile korunabilir. Yalnızca kişisel kullanım için kullanın. Eğer telif hakkı sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın, ilgili içeriği kaldıracağız."
@@ -231,7 +233,7 @@ LANGUAGES = {
     "ar": {
         "start": (
             "👋 مرحبًا بك في بوت الموسيقى! 🎶\n\n"
-            "سأساعدك في تنزيل الصوت من YouTube و SoundCloud بصيغة M4A.\n\n"
+            "سأساعدك في تنزيل الصوت من YouTube و SoundCloud بصيغة MP3 (320 kbps).\n\n"
             "🔗 فقط أرسل رابط فيديو أو مقطع — وستحصل على موسيقاك!\n\n"
             f"📢 لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNELS[0]}.\n\n"
             "🔍 هل تريد البحث عن أغنية بالاسم؟ استخدم /search واختر المفضلة لديك!\n\n"
@@ -257,15 +259,15 @@ LANGUAGES = {
         "already_cancelled_or_done": "تم إلغاء التنزيل أو إكماله بالفعل.",
         "url_error_generic": "فشل في معالجة الرابط. تأكد من أنه رابط YouTube أو SoundCloud صالح.",
         "search_prompt": (
-            "أدخل اسم المقطع الصوتي أو الفنان. ثم انقر على الموسيقى، سيتم تنزيلها بصيغة M4A.\n"
+            "أدخل اسم المقطع الصوتي أو الفنان. ثم انقر على الموسيقى، سيتم تنزيلها بصيغة MP3 (320 kbps).\n"
             "أدخل /cancel لإلغاء البحث.\n"
             "أدخل /search للبحث عن الموسيقى بالاسم (يوتيوب)."
         ),
         "searching": "جاري البحث عن الموسيقى...",
         "unsupported_url_in_search": "الرابط غير مدعوم. يرجى التحقق من الرابط أو تجربة استعلام آخر. (بدلاً من ذلك، إذا لم ينجح الأمر, يمكنك تنزيل مقطع صوتي من فنان آخر أو ريمكس)",
         "no_results": "لم يتم العثور على شيء. حاول استعلامًا آخر.",
-        "choose_track": "حدد مسارًا لتنزيله بصيغة M4A:",
-        "downloading_selected_track": "جاري تنزيل المسار المحدد بصيغة M4A...",
+    "choose_track": "حدد مسارًا لتنزيله بصيغة MP3 (320 kbps):",
+    "downloading_selected_track": "جاري تنزيل المسار المحدد بصيغة MP3 (320 kbps)...",
         "copyright_pre": "⚠️ تحذير! قد يكون المحتوى الذي توشك على تنزيله محميًا بحقوق النشر. استخدمه للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة, يرجى التواصل عبر copyrightytdlpbot@gmail.com لحذف المحتوى.",
         "copyright_post": "⚠️ قد يكون هذا المحتوى محميًا بحقوق النشر. استخدمه للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة, يرجى التواصل عبر copyrightytdlpbot@gmail.com.",
         "copyright_command": "⚠️ تحذير! جميع المواد التي يتم تنزيلها عبر هذا البوت قد تكون محمية بحقوق النشر. استخدمها للأغراض الشخصية فقط. إذا كنت صاحب حقوق وتعتقد أن حقوقك منتهكة, يرجى التواصل عبر copyrightytdlpbot@gmail.com وسنقوم بحذف المحتوى."
@@ -273,7 +275,7 @@ LANGUAGES = {
     "az": {
         "start": (
             "👋 Salam! Musiqi botuna xoş gəlmisiniz! 🎶\n\n"
-            "YouTube və SoundCloud-dan M4A formatında səs yükləmək üçün buradayam.\n\n"
+            "YouTube və SoundCloud-dan MP3 (320 kbps) formatında səs yükləmək üçün buradayam.\n\n"
             "🔗 Sadəcə video və ya trek linki göndərin — musiqiniz hazırdır!\n\n"
             f"📢 Botdan istifadə üçün {REQUIRED_CHANNELS[0]} kanalına abunə olun.\n\n"
             "🔍 Mahnını adla axtarmaq istəyirsiniz? /search yazın və sevdiyinizi seçin!\n\n"
@@ -299,15 +301,15 @@ LANGUAGES = {
         "already_cancelled_or_done": "Yükləmə artıq ləğv edilib və ya tamamlanıb.",
         "url_error_generic": "URL emal edilə bilmədi. Etibarlı bir YouTube və ya SoundCloud linki olduğundan əmin olun.",
         "search_prompt": (
-            "Trek adı və ya ifaçı adı daxil edin. Sonra musiqiyə tıklayın, M4A formatında yüklənəcək.\n"
+            "Trek adı və ya ifaçı adı daxil edin. Sonra musiqiyə tıklayın, MP3 (320 kbps) formatında yüklənəcək.\n"
             "/cancel daxil edərək axtarışı ləğv edin.\n"
             "/search daxil edərək adla musiqi axtarın (YouTube)."
         ),
         "searching": "Musiqi axtarılır...",
         "unsupported_url_in_search": "Link dəstəklənmir. Zəhmət olmasa, linki yoxlayın və ya başqa bir sorğu sınayın. (Alternativ olaraq, əgər işləmədisə, başqa bir ifaçıdan və ya Remix bir trek yükləyə bilərsiniz)",
         "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
-        "choose_track": "M4A olaraq yükləmək üçün bir trek seçin:",
-        "downloading_selected_track": "Seçilən trek M4A olaraq yüklənir...",
+    "choose_track": "MP3 (320 kbps) olaraq yükləmək üçün bir trek seçin:",
+    "downloading_selected_track": "Seçilən trek MP3 (320 kbps) olaraq yüklənir...",
         "copyright_pre": "⚠️ Diqqət! Yüklədiyiniz material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
         "copyright_post": "⚠️ Bu material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
         "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
@@ -545,7 +547,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             'writethumbnail': True,
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'm4a',
+                'preferredcodec': 'mp3',
                 'preferredquality': '320',
             }],
             'verbose': True
@@ -605,7 +607,7 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url_to_use)
 
         all_files = os.listdir(temp_dir)
-        audio_files = [f for f in all_files if f.endswith('.m4a')]
+        audio_files = [f for f in all_files if f.endswith('.mp3')]
         thumbnail_files = [f for f in all_files if f.lower().endswith(('.jpg', '.jpeg', '.webp'))]
 
         if not audio_files:
@@ -653,30 +655,37 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                 except Exception as e:
                     logger.debug(f"Could not compress local thumbnail {thumbnail_path}: {e}")
 
-            # embed metadata and cover if available
+            # embed metadata and cover for MP3 using ID3 tags
             try:
-                mp4 = MP4(audio_path)
-                # Title / track
-                mp4['\xa9nam'] = title
-                # Artist: try multiple possible fields
+                # Ensure ID3 header
+                try:
+                    id3 = ID3(audio_path)
+                except ID3NoHeaderError:
+                    id3 = ID3()
+
+                # Title
+                id3.add(TIT2(encoding=3, text=title))
+
+                # Artist
                 tag_artist = artist
                 if not tag_artist and info.get('album_artist'):
                     tag_artist = info.get('album_artist')
                 if not tag_artist and info.get('uploader'):
                     tag_artist = info.get('uploader')
-                mp4['\xa9ART'] = tag_artist or ''
+                if tag_artist:
+                    id3.add(TPE1(encoding=3, text=str(tag_artist)))
 
                 # Album
                 if info.get('album'):
-                    mp4['\xa9alb'] = info.get('album')
+                    id3.add(TALB(encoding=3, text=str(info.get('album'))))
 
                 # Year / release date
                 if info.get('release_year'):
-                    mp4['\xa9day'] = str(info.get('release_year'))
+                    id3.add(TDRC(encoding=3, text=str(info.get('release_year'))))
                 elif info.get('release_date'):
-                    mp4['\xa9day'] = str(info.get('release_date'))
+                    id3.add(TDRC(encoding=3, text=str(info.get('release_date'))))
 
-                # Add composer/performer fields for featured artists if available
+                # Featured artists / performers
                 if info.get('artists') and isinstance(info.get('artists'), (list, tuple)):
                     performers = []
                     for a in info.get('artists'):
@@ -687,17 +696,23 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
                         if name:
                             performers.append(name)
                     if performers:
-                        mp4['\xa9ART'] = ', '.join(performers)
+                        id3.add(TPE1(encoding=3, text=', '.join(performers)))
 
+                # Add cover art
                 if jpeg_data:
-                    mp4['covr'] = [MP4Cover(jpeg_data, imageformat=MP4Cover.FORMAT_JPEG)]
-                mp4.save()
-            except Exception as e:
-                logger.error(f"Error embedding metadata or cover for {audio_path}: {e}")
+                    id3.add(APIC(encoding=3, mime='image/jpeg', type=3, desc='Cover', data=jpeg_data))
 
-            new_filename = sanitize_filename(f"{artist} - {title}.m4a" if artist else f"{title}.m4a")
+                # Save tags to file
+                id3.save(audio_path)
+            except Exception as e:
+                logger.error(f"Error embedding ID3 metadata or cover for {audio_path}: {e}")
+
+            new_filename = sanitize_filename(f"{artist} - {title}.mp3" if artist else f"{title}.mp3")
             new_path = os.path.join(temp_dir, new_filename)
-            os.rename(audio_path, new_path)
+            try:
+                os.rename(audio_path, new_path)
+            except Exception:
+                new_path = audio_path
 
             downloaded_files_info.append((new_path, title))
 
