@@ -1,4 +1,3 @@
-
 import os  # Import necessary libraries
 import logging  # Import logging for debugging and information
 import asyncio  # Import asyncio for asynchronous operations
@@ -43,7 +42,8 @@ USER_LANGS_FILE = "user_languages.json"  # File to store user language preferenc
 LANG_KEYBOARD = ReplyKeyboardMarkup(
     [
         ["Русский", "English"],
-        ["Español", "Azərbaycan dili"],
+        ["Español", "Deutsch"],
+        ["Français", "Azərbaycan dili"],
         ["Türkçe", "العربية"]
     ],
     resize_keyboard=True,
@@ -52,6 +52,7 @@ LANG_KEYBOARD = ReplyKeyboardMarkup(
 # Mapping language names to codes
 LANG_CODES = {
     "Русский": "ru", "English": "en", "Español": "es",
+    "Deutsch": "de", "Français": "fr",
     "Azərbaycan dili": "az", "Türkçe": "tr",
     "العربية": "ar"
 }
@@ -221,14 +222,14 @@ LANGUAGES = {
             "Aramayı iptal etmek için /cancel yazın.\n"
             "Müzik adıyla arama yapmak için /search yazın (YouTube)."
         ),
-        "searching": "Müzik aranıyor...",
+        "searching": "Musiqi axtarılır...",
         "unsupported_url_in_search": "Bağlantı desteklenmiyor. Lütfen bağlantıyı kontrol edin veya başka bir sorgu deneyin. (Alternatif olarak, işe yaramadıysa, başka bir sanatçıdan veya Remix bir parça indirebilirsiniz)",
         "no_results": "Hiçbir sonuç bulunamadı. Başka bir sorgu deneyin.",
     "choose_track": "MP3 (320 kbps) olarak indirmek için bir parça seçin:",
     "downloading_selected_track": "Seçilen parça MP3 (320 kbps) olarak indiriliyor...",
         "copyright_pre": "⚠️ Dikkat! İndirmek üzere olduğunuz materyal telif hakkı ile korunabilir. Yalnızca kişisel kullanım için kullanın. Eğer telif hakkı sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın.",
-        "copyright_post": "⚠️ Bu materyal telif hakkı ile korunabilir. Yalnızca kişisel kullanım için kullanın. Eğer telif hakkı sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın.",
-        "copyright_command": "⚠️ Dikkat! Bu bot aracılığıyla indirilen tüm materyaller telif hakkı ile korunabilir. Yalnızca kişisel kullanım için kullanın. Eğer telif hakkı sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın, ilgili içeriği kaldıracağız."
+        "copyright_post": "⚠️ Bu materyal telif hakkı ile korunabilir. Yalnızca kişisel kullanım için kullanın. Eğer telif hakkı sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, copyrightytdlpbot@gmail.com adresine yazın.",
+        "copyright_command": "⚠️ Dikkat! Bu bot aracılığıyla indirilen tüm materyaller telif hakkı ile korunabilir. Yalnızca kişisel kullanım için kullanın. Eğer telif hakkı sahibiyseniz ve haklarınızın ihlal edildiğini düşünüyorsanız, lütfen copyrightytdlpbot@gmail.com adresine yazın, müvafiq məzmunu siləcəyik."
     },
     "ar": {
         "start": (
@@ -310,9 +311,93 @@ LANGUAGES = {
         "no_results": "Heç nə tapılmadı. Başqa bir sorğu sınayın.",
     "choose_track": "MP3 (320 kbps) olaraq yükləmək üçün bir trek seçin:",
     "downloading_selected_track": "Seçilən trek MP3 (320 kbps) olaraq yüklənir...",
-        "copyright_pre": "⚠️ Diqqət! Yüklədiyiniz material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
-        "copyright_post": "⚠️ Bu material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
-        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibisiniz və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
+        "copyright_pre": "⚠️ Diqqət! Yüklədiyiniz material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibiysanız və hüquqlarınızın pozulduğunu düşünürsənsə, zəhmət olmasa copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_post": "⚠️ Bu material müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibiysanız və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın.",
+        "copyright_command": "⚠️ Diqqət! Bu bot vasitəsilə yüklənən bütün materiallar müəllif hüquqları ilə qoruna bilər. Yalnız şəxsi istifadə üçün istifadə edin. Əgər siz hüquq sahibiysanız və hüquqlarınızın pozulduğunu düşünürsə, copyrightytdlpbot@gmail.com ünvanına yazın, müvafiq məzmunu siləcəyik."
+    },
+    "de": {
+        "start": (
+            "👋 Hallo! Willkommen beim Musik-Bot! 🎶\n\n"
+            "Ich helfe dir, Audiodateien von YouTube und SoundCloud im MP3-Format (320 kbps) herunterzuladen.\n\n"
+            "🔗 Sende einfach einen Link zu einem Video oder Track – und erhalte deine Musik!\n\n"
+            f"📢 Um den Bot zu nutzen, abonniere bitte den Kanal {REQUIRED_CHANNELS[0]}.\n\n"
+            "🔍 Möchtest du einen Song nach Namen suchen? Nutze /search und wähle deinen Favoriten!\n\n"
+            "✨ Viel Spaß beim Hören!\n"
+            "\nSupport & Neuigkeiten — @ytdlpdeveloper | artoflife2303.github.io/miniblog"
+        ),
+        "choose_lang": "Wähle eine Sprache:",
+        "not_subscribed": f"Um den Bot zu nutzen, abonniere bitte den Kanal {REQUIRED_CHANNELS[0]} und versuche es erneut.",
+        "checking": "Überprüfe den Link...",
+        "not_youtube": "Dies ist kein unterstützter Link. Bitte sende einen gültigen YouTube- oder SoundCloud-Link.",
+        "downloading_audio": "Lade Audio herunter... Bitte warten.",
+        "download_progress": "Herunterladen: {percent} mit {speed}, verbleibend ~{eta}",
+        "too_big": f"Die Datei ist zu groß (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Versuche ein anderes Video oder einen anderen Track.",
+        "done_audio": "Fertig! Audio wurde gesendet.",
+        "error": "Etwas ist schiefgelaufen. Überprüfe den Link oder versuche es später erneut!",
+        "error_private_video": "Dies ist ein privates Video und kann nicht heruntergeladen werden.",
+        "error_video_unavailable": "Video nicht verfügbar.",
+        "sending_file": "Sende Datei {index} von {total}...",
+        "cancel_button": "Abbrechen",
+        "cancelling": "Download wird abgebrochen...",
+        "cancelled": "Download abgebrochen.",
+        "download_in_progress": "Ein anderer Download läuft bereits. Bitte warte oder breche ihn ab.",
+        "already_cancelled_or_done": "Download wurde bereits abgebrochen oder abgeschlossen.",
+        "url_error_generic": "URL konnte nicht verarbeitet werden. Stelle sicher, dass es sich um einen gültigen YouTube- oder SoundCloud-Link handelt.",
+        "search_prompt": (
+            "Gib den Namen des Tracks oder des Künstlers ein. Klicke dann auf die Musik, sie wird im MP3-Format (320 kbps) heruntergeladen.\n"
+            "Gib /cancel ein, um die Suche abzubrechen.\n"
+            "Gib /search ein, um Musik nach Namen zu suchen (YouTube)."
+        ),
+        "searching": "Suche nach Musik...",
+        "unsupported_url_in_search": "Der Link wird nicht unterstützt. Bitte überprüfe den Link oder versuche eine andere Anfrage.",
+        "no_results": "Keine Ergebnisse gefunden. Versuche eine andere Anfrage.",
+    "choose_track": "Wähle einen Track zum Herunterladen im MP3-Format (320 kbps):",
+    "downloading_selected_track": "Lade den ausgewählten Track im MP3-Format (320 kbps) herunter...",
+        "copyright_pre": "⚠️ Achtung! Das Material, das du herunterladen möchtest, könnte urheberrechtlich geschützt sein. Verwende es nur für persönliche Zwecke.",
+        "copyright_post": "⚠️ Dieses Material könnte urheberrechtlich geschützt sein. Verwende es nur für persönliche Zwecke.",
+        "copyright_command": "⚠️ Achtung! Alle über diesen Bot heruntergeladenen Materialien könnten urheberrechtlich geschützt sein. Verwende sie nur für persönliche Zwecke."
+    },
+    "fr": {
+        "start": (
+            "👋 Bonjour ! Bienvenue sur le bot musical ! 🎶\n\n"
+            "Je peux t'aider à télécharger de l'audio depuis YouTube et SoundCloud au format MP3 (320 kbps).\n\n"
+            "🔗 Envoie simplement un lien vers une vidéo ou une piste — et récupère ta musique !\n\n"
+            f"📢 Pour utiliser le bot, abonne-toi à la chaîne {REQUIRED_CHANNELS[0]}.\n\n"
+            "🔍 Tu veux chercher une chanson par nom ? Utilise /search et choisis ton préféré !\n\n"
+            "✨ Bonne écoute !\n"
+            "\nSupport & actualités — @ytdlpdeveloper | artoflife2303.github.io/miniblog"
+        ),
+        "choose_lang": "Choisis une langue :",
+        "not_subscribed": f"Pour utiliser le bot, abonne-toi à la chaîne {REQUIRED_CHANNELS[0]} et réessaie.",
+        "checking": "Vérification du lien...",
+        "not_youtube": "Ce n'est pas un lien pris en charge. Envoie un lien valide YouTube ou SoundCloud.",
+        "downloading_audio": "Téléchargement de l'audio... Veuillez patienter.",
+        "download_progress": "Téléchargement : {percent} à {speed}, reste ~{eta}",
+        "too_big": f"Le fichier est trop volumineux (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). Essaie une autre vidéo ou piste.",
+        "done_audio": "Terminé ! Audio envoyé.",
+        "error": "Une erreur s'est produite. Vérifie le lien ou réessaie plus tard !",
+        "error_private_video": "Ceci est une vidéo privée et ne peut pas être téléchargée.",
+        "error_video_unavailable": "Vidéo indisponible.",
+        "sending_file": "Envoi du fichier {index} sur {total}...",
+        "cancel_button": "Annuler",
+        "cancelling": "Annulation du téléchargement...",
+        "cancelled": "Téléchargement annulé.",
+        "download_in_progress": "Un autre téléchargement est déjà en cours. Veuillez attendre ou l'annuler.",
+        "already_cancelled_or_done": "Le téléchargement a déjà été annulé ou terminé.",
+        "url_error_generic": "Impossible de traiter l'URL. Assure-toi qu'il s'agit d'un lien valide YouTube ou SoundCloud.",
+        "search_prompt": (
+            "Saisis le nom de la piste ou de l'artiste. Clique ensuite sur la musique, elle sera téléchargée au format MP3 (320 kbps).\n"
+            "Saisis /cancel pour annuler la recherche.\n"
+            "Saisis /search pour rechercher de la musique par nom (YouTube)."
+        ),
+        "searching": "Recherche de musique...",
+        "unsupported_url_in_search": "Le lien n'est pas pris en charge. Vérifie le lien ou essaie une autre requête.",
+        "no_results": "Aucun résultat trouvé. Essaie une autre requête.",
+        "choose_track": "Sélectionne une piste à télécharger au format MP3 (320 kbps) :",
+        "downloading_selected_track": "Téléchargement de la piste sélectionnée au format MP3 (320 kbps)...",
+        "copyright_pre": "⚠️ Attention ! Le contenu que tu es sur le point de télécharger peut être protégé par des droits d'auteur. Utilise-le uniquement à des fins personnelles.",
+        "copyright_post": "⚠️ Ce contenu peut être protégé par des droits d'auteur. Utilise-le uniquement à des fins personnelles.",
+        "copyright_command": "⚠️ Attention ! Tous les contenus téléchargés via ce bot peuvent être protégés par des droits d'auteur. Utilise-les uniquement à des fins personnelles."
     }
 }
 
