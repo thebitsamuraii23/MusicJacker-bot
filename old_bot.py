@@ -44,18 +44,26 @@ LANG_KEYBOARD = ReplyKeyboardMarkup(
         ["Русский", "English"],
         ["Español", "Deutsch"],
         ["Français", "Azərbaycan dili"],
-        ["Türkçe", "العربية"]
+        ["Türkçe", "العربية"],
+        ["  ", "한국어", "中文"]
     ],
     resize_keyboard=True,
-    one_time_keyboard=True
+    one_time_keyboard=False
 )
+
 # Mapping language names to codes
 LANG_CODES = {
     "Русский": "ru", "English": "en", "Español": "es",
     "Deutsch": "de", "Français": "fr",
     "Azərbaycan dili": "az", "Türkçe": "tr",
-    "العربية": "ar"
+    "العربية": "ar",
+    "日本語": "ja",
+    "한국어": "ko",
+    "中文": "zh"
 }
+
+# Inline keyboard data for language selection (used on startup)
+LANG_INLINE_BUTTONS = [InlineKeyboardButton(name, callback_data=f"lang_{code}") for name, code in LANG_CODES.items()]
 
 SEARCH_RESULTS_LIMIT = 10  # Search results limit
 MAX_CONCURRENT_DOWNLOADS_PER_USER = int(os.getenv('MAX_CONCURRENT_DOWNLOADS_PER_USER', '3'))
@@ -357,6 +365,132 @@ LANGUAGES = {
         "copyright_post": "⚠️ Dieses Material könnte urheberrechtlich geschützt sein. Verwende es nur für persönliche Zwecke.",
         "copyright_command": "⚠️ Achtung! Alle über diesen Bot heruntergeladenen Materialien könnten urheberrechtlich geschützt sein. Verwende sie nur für persönliche Zwecke."
     },
+    "ja": {
+        "start": (
+            "👋 こんにちは！音楽ボットへようこそ！ 🎶\n\n"
+            "YouTubeやSoundCloudからMP3形式（320 kbps）で音声をダウンロードできます。\n\n"
+            "🔗 動画やトラックのリンクを送るだけで、音楽を取得できます！\n\n"
+            f"📢 ボットを利用するには、チャンネル {REQUIRED_CHANNELS[0]} を購読してください。\n\n"
+            "🔍 曲名で検索したいですか？ /search を使って曲を選んでください！\n\n"
+            "✨ 音楽をお楽しみください！\n"
+            "\nサポートとニュース — @ytdlpdeveloper | artoflife2303.github.io/miniblog"
+        ),
+        "choose_lang": "言語を選択してください:",
+        "not_subscribed": f"ボットを利用するには、チャンネル {REQUIRED_CHANNELS[0]} を購読してから再試行してください。",
+        "checking": "リンクを確認しています...",
+        "not_youtube": "サポートされていないリンクです。有効なYouTubeまたはSoundCloudのリンクを送信してください。",
+        "downloading_audio": "音声をダウンロードしています... お待ちください。",
+        "download_progress": "ダウンロード中: {percent}、速度 {speed}、残り時間 ~{eta}",
+        "too_big": f"ファイルが大きすぎます (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT})。別のビデオやトラックを試してください。",
+        "done_audio": "完了！音声を送信しました。",
+        "error": "エラーが発生しました。リンクを確認するか後でもう一度お試しください！",
+        "error_private_video": "この動画は非公開のためダウンロードできません。",
+        "error_video_unavailable": "動画が利用できません。",
+        "sending_file": "ファイル {index}/{total} を送信しています...",
+        "cancel_button": "キャンセル",
+        "cancelling": "ダウンロードをキャンセルしています...",
+        "cancelled": "ダウンロードがキャンセルされました。",
+        "download_in_progress": "別のダウンロードが進行中です。しばらくお待ちいただくかキャンセルしてください。",
+        "already_cancelled_or_done": "ダウンロードはすでにキャンセルされているか完了しています。",
+        "url_error_generic": "URLを処理できませんでした。正しいYouTubeまたはSoundCloudのリンクであることを確認してください。",
+        "search_prompt": (
+            "トラック名またはアーティスト名を入力してください。曲をクリックすると、MP3（320 kbps）形式でダウンロードされます。\n"
+            "検索をキャンセルするには /cancel を入力してください。\n"
+            "曲名で検索するには /search を入力してください（YouTube）。"
+        ),
+        "searching": "音楽を検索しています...",
+        "unsupported_url_in_search": "そのリンクはサポートされていません。リンクを確認するか別のクエリを試してください。",
+        "no_results": "結果が見つかりません。別のクエリを試してください。",
+        "choose_track": "MP3（320 kbps）でダウンロードするトラックを選択してください:",
+        "downloading_selected_track": "選択したトラックをMP3（320 kbps）でダウンロードしています...",
+        "copyright_pre": "⚠️ 注意！ダウンロードしようとしている素材は著作権で保護されている可能性があります。個人使用のみでご利用ください。権利者であり、権利侵害だと考える場合は copyrightytdlpbot@gmail.com までご連絡ください。",
+        "copyright_post": "⚠️ この素材は著作権で保護されている可能性があります。個人使用のみでご利用ください。権利者である場合は copyrightytdlpbot@gmail.com までご連絡ください。",
+        "copyright_command": "⚠️ 注意！このボットでダウンロードされるすべての素材は著作権で保護されている可能性があります。個人使用のみでご利用ください。権利者である場合は copyrightytdlpbot@gmail.com までご連絡ください。"
+    },
+    "ko": {
+        "start": (
+            "👋 안녕하세요! 음악 봇에 오신 것을 환영합니다! 🎶\n\n"
+            "YouTube와 SoundCloud에서 MP3 형식(320 kbps)으로 오디오를 다운로드하도록 도와드립니다.\n\n"
+            "🔗 동영상 또는 트랙 링크를 보내면 음악을 받아볼 수 있습니다!\n\n"
+            f"📢 봇을 사용하려면 채널 {REQUIRED_CHANNELS[0]} 를 구독해주세요.\n\n"
+            "🔍 노래 제목으로 검색하고 싶으신가요? /search 를 사용해 좋아하는 곡을 선택하세요!\n\n"
+            "✨ 음악을 즐기세요!\n"
+            "\n지원 및 소식 — @ytdlpdeveloper | artoflife2303.github.io/miniblog"
+        ),
+        "choose_lang": "언어를 선택하세요:",
+        "not_subscribed": f"봇을 사용하려면 채널 {REQUIRED_CHANNELS[0]} 를 구독한 후 다시 시도해주세요.",
+        "checking": "링크 확인 중...",
+        "not_youtube": "지원되지 않는 링크입니다. 유효한 YouTube 또는 SoundCloud 링크를 보내주세요.",
+        "downloading_audio": "오디오를 다운로드 중입니다... 잠시만 기다려주세요.",
+        "download_progress": "다운로드 중: {percent} 속도 {speed}, 남은 시간 ~{eta}",
+        "too_big": f"파일이 너무 큽니다 (>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}). 다른 비디오나 트랙을 시도해보세요.",
+        "done_audio": "완료! 오디오를 전송했습니다.",
+        "error": "문제가 발생했습니다. 링크를 확인하거나 나중에 다시 시도하세요!",
+        "error_private_video": "이 비디오는 비공개라 다운로드할 수 없습니다.",
+        "error_video_unavailable": "비디오를 사용할 수 없습니다.",
+        "sending_file": "파일 {index}/{total}을 전송 중...",
+        "cancel_button": "취소",
+        "cancelling": "다운로드를 취소하는 중...",
+        "cancelled": "다운로드가 취소되었습니다.",
+        "download_in_progress": "다른 다운로드가 이미 진행 중입니다. 잠시 기다리거나 취소하세요.",
+        "already_cancelled_or_done": "다운로드가 이미 취소되었거나 완료되었습니다.",
+        "url_error_generic": "URL을 처리할 수 없습니다. 유효한 YouTube 또는 SoundCloud 링크인지 확인하세요.",
+        "search_prompt": (
+            "트랙명 또는 아티스트를 입력하세요. 음악을 클릭하면 MP3(320 kbps) 형식으로 다운로드됩니다.\n"
+            "검색을 취소하려면 /cancel 을 입력하세요.\n"
+            "곡명으로 검색하려면 /search 를 입력하세요 (YouTube)."
+        ),
+        "searching": "음악을 검색 중입니다...",
+        "unsupported_url_in_search": "링크가 지원되지 않습니다. 링크를 확인하거나 다른 쿼리를 시도하세요.",
+        "no_results": "결과가 없습니다. 다른 쿼리를 시도하세요.",
+        "choose_track": "MP3(320 kbps)로 다운로드할 트랙을 선택하세요:",
+        "downloading_selected_track": "선택한 트랙을 MP3(320 kbps)로 다운로드 중입니다...",
+        "copyright_pre": "⚠️ 경고! 다운로드하려는 자료는 저작권으로 보호될 수 있습니다. 개인적인 용도로만 사용하세요. 권리자이고 권리 침해라고 생각되면 copyrightytdlpbot@gmail.com 으로 연락해주세요.",
+        "copyright_post": "⚠️ 이 자료는 저작권으로 보호될 수 있습니다. 개인적인 용도로만 사용하세요. 권리자라면 copyrightytdlpbot@gmail.com 으로 연락해주세요.",
+        "copyright_command": "⚠️ 경고! 이 봇을 통해 다운로드되는 모든 자료는 저작권으로 보호될 수 있습니다. 개인적인 용도로만 사용하세요. 권리자라면 copyrightytdlpbot@gmail.com 으로 연락주시면 콘텐츠를 삭제하겠습니다."
+    },
+    "zh": {
+        "start": (
+            "👋 你好！欢迎使用音乐机器人！ 🎶\n\n"
+            "我可以帮你从 YouTube 和 SoundCloud 下载 MP3 格式（320 kbps）的音频。\n\n"
+            "🔗 只需发送视频或曲目的链接——即可获得音乐！\n\n"
+            f"📢 要使用此机器人，请订阅频道 {REQUIRED_CHANNELS[0]} 。\n\n"
+            "🔍 想按名称搜索歌曲吗？使用 /search 并选择你喜欢的曲目！\n\n"
+            "✨ 祝你听歌愉快！\n"
+            "\n支持与新闻 — @ytdlpdeveloper | artoflife2303.github.io/miniblog"
+        ),
+        "choose_lang": "选择语言:",
+        "not_subscribed": f"要使用此机器人，请先订阅频道 {REQUIRED_CHANNELS[0]} 然后重试。",
+        "checking": "正在检查链接...",
+        "not_youtube": "这不是受支持的链接。请发送有效的 YouTube 或 SoundCloud 链接。",
+        "downloading_audio": "正在下载音频... 请稍候。",
+        "download_progress": "下载中：{percent}，速度 {speed}，预计剩余 ~{eta}",
+        "too_big": f"文件太大（>{TELEGRAM_FILE_SIZE_LIMIT_TEXT}）。请尝试其他视频或曲目。",
+        "done_audio": "完成！已发送音频。",
+        "error": "出错了。请检查链接或稍后重试！",
+        "error_private_video": "这是私人视频，无法下载。",
+        "error_video_unavailable": "视频不可用。",
+        "sending_file": "正在发送文件 {index} / {total}...",
+        "cancel_button": "取消",
+        "cancelling": "正在取消下载...",
+        "cancelled": "下载已取消。",
+        "download_in_progress": "另一个下载正在进行中。请稍候或取消它。",
+        "already_cancelled_or_done": "下载已被取消或已完成。",
+        "url_error_generic": "无法处理 URL。请确保它是有效的 YouTube 或 SoundCloud 链接。",
+        "search_prompt": (
+            "输入曲目名称或艺术家。然后点击音乐，系统将以 MP3（320 kbps）格式下载。\n"
+            "输入 /cancel 以取消搜索。\n"
+            "输入 /search 在 YouTube 上按名称搜索音乐。"
+        ),
+        "searching": "正在搜索音乐...",
+        "unsupported_url_in_search": "该链接不受支持。请检查链接或尝试其他查询。",
+        "no_results": "未找到任何结果。请尝试其他查询。",
+        "choose_track": "选择要以 MP3（320 kbps）下载的曲目：",
+        "downloading_selected_track": "正在以 MP3（320 kbps）下载所选曲目...",
+        "copyright_pre": "⚠️ 注意！您即将下载的资料可能受版权保护。仅供个人使用。如果您是权利人并认为您的权利受到侵害，请联系 copyrightytdlpbot@gmail.com。",
+        "copyright_post": "⚠️ 该资料可能受版权保护。仅供个人使用。如果您是权利人并认为您的权利受到侵害，请联系 copyrightytdlpbot@gmail.com。",
+        "copyright_command": "⚠️ 注意！通过此机器人下载的所有资料可能受版权保护。仅供个人使用。如果您是权利人并认为您的权利受到侵害，请联系 copyrightytdlpbot@gmail.com，我们将删除相关内容。"
+    },
     "fr": {
         "start": (
             "👋 Bonjour ! Bienvenue sur le bot musical ! 🎶\n\n"
@@ -443,15 +577,31 @@ async def choose_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Sends the user a keyboard to choose a language.
     """
     logger.info(f"User {update.effective_user.id} requested language choice.")
+    user_id = update.effective_user.id
+    lang = get_user_lang(user_id)
+    texts = LANGUAGES.get(lang, LANGUAGES.get("ru"))
+    # Show both options: reply keyboard for backward compatibility and inline buttons
+    # Build inline keyboard in rows of 2 buttons
+    inline_rows = []
+    row = []
+    for btn in LANG_INLINE_BUTTONS:
+        row.append(btn)
+        if len(row) >= 2:
+            inline_rows.append(row)
+            row = []
+    if row:
+        inline_rows.append(row)
+
     await update.message.reply_text(
-        LANGUAGES["ru"]["choose_lang"],
-        reply_markup=LANG_KEYBOARD
+        texts.get("choose_lang", LANGUAGES["ru"]["choose_lang"]),
+        reply_markup=InlineKeyboardMarkup(inline_rows)
     )
 
 async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Sets the language for the user and sends a welcome message.
     """
+    # This handler is still used for legacy ReplyKeyboardMarkup presses (text messages)
     lang_name = update.message.text
     lang_code = LANG_CODES.get(lang_name)
     user_id = update.effective_user.id
@@ -462,9 +612,10 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(LANGUAGES[lang_code]["start"])
     else:
         logger.warning(f"User {user_id} sent invalid language: {lang_name}.")
-        await update.message.reply_text(
-            "Please choose a language from the keyboard."
-        )
+        # Reply in user's current language if possible
+        cur_lang = get_user_lang(user_id)
+        cur_texts = LANGUAGES.get(cur_lang, LANGUAGES.get("ru"))
+        await update.message.reply_text(cur_texts.get("choose_lang", "Please choose a language from the keyboard."))
 
 async def check_subscription(user_id: int, bot) -> bool:
     """
@@ -611,7 +762,8 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             asyncio.run_coroutine_threadsafe(update_status_message_async(progress_text), loop)
 
     try:
-        await context.bot.send_message(chat_id=chat_id, text=texts.get("copyright_pre"))
+        # Do NOT send copyright/warning message here. Per user request, copyright
+        # information should only be shown AFTER a successful download/upload.
         status_message = await context.bot.send_message(chat_id=chat_id, text=texts["downloading_audio"], reply_markup=cancel_keyboard)
         # store status message id for potential edits/cancellation
         active_downloads.setdefault(user_id, {})[task_id]['status_message_id'] = status_message.message_id
@@ -836,10 +988,13 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
             await context.bot.send_message(chat_id=chat_id, text=texts["cancelled"])
     except Exception as e:
         if 'Unsupported URL' in str(e) or 'unsupported url' in str(e).lower():
+            lang = get_user_lang(user_id)
+            texts = LANGUAGES.get(lang, LANGUAGES["ru"])
+            unsupported_text = texts.get("unsupported_url_in_search", "The link is not supported. Please check the link or try another query.")
             if status_message:
-                await update_status_message_async("The link is not supported. Please check the link or try another query.", show_cancel_button=False)
+                await update_status_message_async(unsupported_text, show_cancel_button=False)
             else:
-                await context.bot.send_message(chat_id=chat_id, text="The link is not supported. Please check the link or try another query.")
+                await context.bot.send_message(chat_id=chat_id, text=unsupported_text)
             return
         logger.critical(f"Unhandled error in handle_download for user {user_id}: {e}", exc_info=True)
         if status_message:
@@ -955,6 +1110,43 @@ async def search_youtube(query: str):
         logger.critical(f"Unhandled error during YouTube search for {query}: {e}", exc_info=True)
         return []
 
+def format_duration(duration_seconds):
+    """
+    Format duration in seconds to H:MM:SS or M:SS.
+    If duration_seconds is None or not a number, return an empty string.
+    """
+    try:
+        if duration_seconds is None:
+            return ""
+        # sometimes duration arrives as string
+        if isinstance(duration_seconds, str):
+            if duration_seconds.isdigit():
+                duration_seconds = int(duration_seconds)
+            else:
+                # try to parse hh:mm:ss or mm:ss
+                parts = duration_seconds.split(":")
+                parts = [int(p) for p in parts if p.isdigit()]
+                if not parts:
+                    return ""
+                # convert to seconds
+                if len(parts) == 3:
+                    h, m, s = parts
+                    duration_seconds = h*3600 + m*60 + s
+                elif len(parts) == 2:
+                    m, s = parts
+                    duration_seconds = m*60 + s
+                else:
+                    duration_seconds = parts[0]
+        d = int(duration_seconds)
+        hours = d // 3600
+        minutes = (d % 3600) // 60
+        seconds = d % 60
+        if hours:
+            return f"{hours}:{minutes:02d}:{seconds:02d}"
+        return f"{minutes}:{seconds:02d}"
+    except Exception:
+        return ""
+
 def is_url(text):
     """
     Checks if a string is a YouTube or SoundCloud URL.
@@ -1007,8 +1199,17 @@ async def handle_search_query(update: Update, context: ContextTypes.DEFAULT_TYPE
     keyboard = []
     for idx, entry in enumerate(results):
         title = entry.get('title', texts["no_results"])
+        # artist/uploader
+        artist = entry.get('artist') or entry.get('uploader') or entry.get('channel') or ''
+        duration = format_duration(entry.get('duration'))
+        label_parts = [f"{idx+1}. {title}"]
+        if artist:
+            label_parts.append(str(artist))
+        if duration:
+            label_parts.append(f"[{duration}]")
+        button_label = " — ".join(label_parts)
         # Use index in callback_data to avoid invalid/too-long callback payloads
-        keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{idx}")])
+        keyboard.append([InlineKeyboardButton(button_label, callback_data=f"searchsel_{user_id}_{idx}")])
 
     await update.message.reply_text(
         texts["choose_track"],
@@ -1034,12 +1235,16 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
         sel_index = int(idx_str)
     except Exception as e:
         logger.error(f"Error parsing search select callback data for user {user_id}: {e} - Data: {query.data}")
-        await query.edit_message_text("Track selection error.")
+        lang = get_user_lang(user_id)
+        texts = LANGUAGES.get(lang, LANGUAGES["ru"])
+        await query.edit_message_text(texts.get("error", "Track selection error."))
         return
 
     if user_id != sel_user_id:
         logger.warning(f"User {user_id} tried to use another user's search select callback: {sel_user_id}")
-        await query.edit_message_text("This button is not for you.")
+        lang = get_user_lang(user_id)
+        texts = LANGUAGES.get(lang, LANGUAGES["ru"])
+        await query.edit_message_text(texts.get("already_cancelled_or_done", "This button is not for you."))
         return
 
     lang = get_user_lang(user_id)
@@ -1048,10 +1253,14 @@ async def search_select_callback(update: Update, context: ContextTypes.DEFAULT_T
     # Retrieve the selected entry from stored search results
     stored = context.user_data.get(f'search_results_{sel_user_id}')
     if not stored or not isinstance(stored, (list, tuple)):
-        await query.edit_message_text("Search results expired or invalid. Please /search again.")
+        lang = get_user_lang(user_id)
+        texts = LANGUAGES.get(lang, LANGUAGES["ru"])
+        await query.edit_message_text(texts.get("no_results", "Search results expired or invalid. Please /search again."))
         return
     if sel_index < 0 or sel_index >= len(stored):
-        await query.edit_message_text("Invalid selection index. Please /search again.")
+        lang = get_user_lang(user_id)
+        texts = LANGUAGES.get(lang, LANGUAGES["ru"])
+        await query.edit_message_text(texts.get("no_results", "Invalid selection index. Please /search again."))
         return
     entry = stored[sel_index]
     video_id = entry.get('id') or entry.get('url') or ''
@@ -1120,29 +1329,38 @@ async def smart_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
         task = asyncio.create_task(handle_download(update, context, text, texts, user_id))
         user_tasks[task_id] = {'task': task}
     else:
+        # If user was prompted to enter a search query explicitly, honor that flow
         if context.user_data.get(f'awaiting_search_query_{user_id}'):
             await handle_search_query(update, context)
-        else:
-            if len(text.split()) <= 5 and text.isascii():
-                logger.info(f"User {user_id} auto-search for: '{text}'")
-                await update.message.reply_text(texts["searching"])
-                # perform search immediately (no artificial delay)
-                results = await search_youtube(text)
-                if not results or results == 'unsupported_url':
-                    await update.message.reply_text(texts["no_results"])
-                    return
-                keyboard = []
-                for idx, entry in enumerate(results):
-                    title = entry.get('title', texts["no_results"])
-                    keyboard.append([InlineKeyboardButton(f"{idx+1}. {title}", callback_data=f"searchsel_{user_id}_{idx}")])
-                await update.message.reply_text(
-                    texts["choose_track"],
-                    reply_markup=InlineKeyboardMarkup(keyboard)
-                )
-                # store results as list, keyed by index
-                context.user_data[f'search_results_{user_id}'] = results
-            else:
-                await update.message.reply_text(texts["url_error_generic"])
+            return
+
+        # Otherwise, any non-URL text should trigger an automatic search (regardless of language or length)
+        logger.info(f"User {user_id} auto-search for: '{text}'")
+        await update.message.reply_text(texts["searching"])
+        results = await search_youtube(text)
+        if results == 'unsupported_url' or not results:
+            await update.message.reply_text(texts["no_results"])
+            return
+
+        keyboard = []
+        for idx, entry in enumerate(results):
+            title = entry.get('title', texts["no_results"])
+            artist = entry.get('artist') or entry.get('uploader') or entry.get('channel') or ''
+            duration = format_duration(entry.get('duration'))
+            label_parts = [f"{idx+1}. {title}"]
+            if artist:
+                label_parts.append(str(artist))
+            if duration:
+                label_parts.append(f"[{duration}]")
+            button_label = " — ".join(label_parts)
+            keyboard.append([InlineKeyboardButton(button_label, callback_data=f"searchsel_{user_id}_{idx}")])
+
+        await update.message.reply_text(
+            texts["choose_track"],
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        # store results as list, keyed by index
+        context.user_data[f'search_results_{user_id}'] = results
 
 async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -1170,7 +1388,9 @@ async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT
 
     if uid != user_id:
         try:
-            await query.edit_message_text("This button is not for you.")
+            # localize the message for wrong-user button presses
+            wrong_user_text = texts.get("already_cancelled_or_done", "This button is not for you.")
+            await query.edit_message_text(wrong_user_text)
         except Exception:
             pass
         return
@@ -1192,6 +1412,42 @@ async def cancel_download_callback(update: Update, context: ContextTypes.DEFAULT
         logger.debug(f"Could not edit message to 'cancelling': {e}")
         pass
     logger.info(f"Download task {task_id} cancelled for user {user_id}.")
+
+
+async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles inline language button presses (callback_data like 'lang_en').
+    Sets the user's language and edits the message to confirm selection.
+    """
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    lang_code = None
+    try:
+        if query.data and query.data.startswith('lang_'):
+            lang_code = query.data.split('_', 1)[1]
+    except Exception:
+        lang_code = None
+
+    if not lang_code or lang_code not in LANGUAGES:
+        cur_lang = get_user_lang(user_id)
+        cur_texts = LANGUAGES.get(cur_lang, LANGUAGES.get('ru'))
+        try:
+            await query.edit_message_text(cur_texts.get('choose_lang', 'Please choose a language.'))
+        except Exception:
+            pass
+        return
+
+    user_langs[user_id] = lang_code
+    save_user_langs()
+    logger.info(f"User {user_id} set language (via inline) to {lang_code}.")
+    try:
+        await query.edit_message_text(LANGUAGES[lang_code]['start'])
+    except Exception:
+        try:
+            await context.bot.send_message(chat_id=user_id, text=LANGUAGES[lang_code]['start'])
+        except Exception:
+            pass
 
 async def copyright_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -1226,6 +1482,8 @@ def main():
 
     app.add_handler(CallbackQueryHandler(search_select_callback, pattern="^searchsel_"))
     app.add_handler(CallbackQueryHandler(cancel_download_callback, pattern="^cancel_"))
+    # handle inline language button presses (callback_data like 'lang_en')
+    app.add_handler(CallbackQueryHandler(language_callback, pattern=r"^lang_"))
 
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND & ~filters.Regex(f"^({'|'.join(LANG_CODES.keys())})$"),
@@ -1261,7 +1519,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     lang = get_user_lang(user_id)
     texts = LANGUAGES[lang]
-    await update.message.reply_text(texts["copyright_post"])
+    # Do NOT send copyright notice on /start. The copyright message is now
+    # only sent after a successful audio delivery (in handle_download).
 
 if __name__ == '__main__':
     main()
