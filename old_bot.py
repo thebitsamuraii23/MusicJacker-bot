@@ -73,7 +73,7 @@ user_langs = {}  # Dictionary for storing user language preferences
 LANGUAGES = {
     "ru": {
         "start": (
-            "👋 Привет! Добро пожаловать в музыкального бота! 🎶\n\n"
+            "👋 Привет! Добро пожаловать в Music Jacker! 🎶\n\n"
             "Я помогу скачать аудио из YouTube и SoundCloud в формате MP3 (320 kbps).\n\n"
             "🔗 Просто отправьте ссылку на видео или трек — и получите музыку!\n\n"
             f"📢 Для работы подпишитесь на канал {REQUIRED_CHANNELS[0]}.\n\n"
@@ -115,7 +115,7 @@ LANGUAGES = {
     },
     "en": {
         "start": (
-            "👋 Hello! Welcome to the music bot! 🎶\n\n"
+            "👋 Hello! Welcome to Music Jacker! 🎶\n\n"
             "I can help you download audio from YouTube and SoundCloud in MP3 format (320 kbps).\n\n"
             "🔗 Just send a link to a video or track — and get your music!\n\n"
             f"📢 To use the bot, please subscribe to the channel {REQUIRED_CHANNELS[0]}.\n\n"
@@ -157,7 +157,7 @@ LANGUAGES = {
     },
     "es": {
         "start": (
-            "👋 ¡Hola! ¡Bienvenido al bot musical! 🎶\n\n"
+            "👋 ¡Hola! ¡Bienvenido a Music Jacker! 🎶\n\n"
             "Te ayudo a descargar audio de YouTube y SoundCloud en formato MP3 (320 kbps).\n\n"
             "🔗 Solo envía un enlace de video o pista — ¡y recibe tu música!\n\n"
             f"📢 Para usar el bot, suscríbete al canal {REQUIRED_CHANNELS[0]}.\n\n"
@@ -199,7 +199,7 @@ LANGUAGES = {
     },
     "tr": {
         "start": (
-            "👋 Merhaba! Müzik botuna hoş geldin! 🎶\n\n"
+            "👋 Merhaba! Music Jacker'a hoş geldin! 🎶\n\n"
             "YouTube ve SoundCloud'dan MP3 (320 kbps) formatında ses indirmen için buradayım.\n\n"
             "🔗 Sadece bir video veya parça bağlantısı gönder — müziğin hazır!\n\n"
             f"📢 Botu kullanmak için {REQUIRED_CHANNELS[0]} kanalına abone olmalısın.\n\n"
@@ -241,7 +241,7 @@ LANGUAGES = {
     },
     "ar": {
         "start": (
-            "👋 مرحبًا بك في بوت الموسيقى! 🎶\n\n"
+            "👋 مرحبًا بك في Music Jacker! 🎶\n\n"
             "سأساعدك في تنزيل الصوت من YouTube و SoundCloud بصيغة MP3 (320 kbps).\n\n"
             "🔗 فقط أرسل رابط فيديو أو مقطع — وستحصل على موسيقاك!\n\n"
             f"📢 لاستخدام البوت، يرجى الاشتراك في القناة {REQUIRED_CHANNELS[0]}.\n\n"
@@ -283,7 +283,7 @@ LANGUAGES = {
     },
     "az": {
         "start": (
-            "👋 Salam! Musiqi botuna xoş gəlmisiniz! 🎶\n\n"
+            "👋 Salam! Music Jacker'a xoş gəlmisiniz! 🎶\n\n"
             "YouTube və SoundCloud-dan MP3 (320 kbps) formatında səs yükləmək üçün buradayam.\n\n"
             "🔗 Sadəcə video və ya trek linki göndərin — musiqiniz hazırdır!\n\n"
             f"📢 Botdan istifadə üçün {REQUIRED_CHANNELS[0]} kanalına abunə olun.\n\n"
@@ -325,7 +325,7 @@ LANGUAGES = {
     },
     "de": {
         "start": (
-            "👋 Hallo! Willkommen beim Musik-Bot! 🎶\n\n"
+            "👋 Hallo! Willkommen bei Music Jacker! 🎶\n\n"
             "Ich helfe dir, Audiodateien von YouTube und SoundCloud im MP3-Format (320 kbps) herunterzuladen.\n\n"
             "🔗 Sende einfach einen Link zu einem Video oder Track – und erhalte deine Musik!\n\n"
             f"📢 Um den Bot zu nutzen, abonniere bitte den Kanal {REQUIRED_CHANNELS[0]}.\n\n"
@@ -367,7 +367,7 @@ LANGUAGES = {
     },
     "ja": {
         "start": (
-            "👋 こんにちは！音楽ボットへようこそ！ 🎶\n\n"
+            "👋 こんにちは！Music Jackerへようこそ！ 🎶\n\n"
             "YouTubeやSoundCloudからMP3形式（320 kbps）で音声をダウンロードできます。\n\n"
             "🔗 動画やトラックのリンクを送るだけで、音楽を取得できます！\n\n"
             f"📢 ボットを利用するには、チャンネル {REQUIRED_CHANNELS[0]} を購読してください。\n\n"
@@ -409,7 +409,7 @@ LANGUAGES = {
     },
     "ko": {
         "start": (
-            "👋 안녕하세요! 음악 봇에 오신 것을 환영합니다! 🎶\n\n"
+            "👋 안녕하세요! Music Jacker에 오신 것을 환영합니다! 🎶\n\n"
             "YouTube와 SoundCloud에서 MP3 형식(320 kbps)으로 오디오를 다운로드하도록 도와드립니다.\n\n"
             "🔗 동영상 또는 트랙 링크를 보내면 음악을 받아볼 수 있습니다!\n\n"
             f"📢 봇을 사용하려면 채널 {REQUIRED_CHANNELS[0]} 를 구독해주세요.\n\n"
@@ -451,7 +451,7 @@ LANGUAGES = {
     },
     "zh": {
         "start": (
-            "👋 你好！欢迎使用音乐机器人！ 🎶\n\n"
+            "👋 你好！欢迎使用 Music Jacker！ 🎶\n\n"
             "我可以帮你从 YouTube 和 SoundCloud 下载 MP3 格式（320 kbps）的音频。\n\n"
             "🔗 只需发送视频或曲目的链接——即可获得音乐！\n\n"
             f"📢 要使用此机器人，请订阅频道 {REQUIRED_CHANNELS[0]} 。\n\n"
@@ -493,7 +493,7 @@ LANGUAGES = {
     },
     "fr": {
         "start": (
-            "👋 Bonjour ! Bienvenue sur le bot musical ! 🎶\n\n"
+            "👋 Bonjour ! Bienvenue sur Music Jacker ! 🎶\n\n"
             "Je peux t'aider à télécharger de l'audio depuis YouTube et SoundCloud au format MP3 (320 kbps).\n\n"
             "🔗 Envoie simplement un lien vers une vidéo ou une piste — et récupère ta musique !\n\n"
             f"📢 Pour utiliser le bot, abonne-toi à la chaîne {REQUIRED_CHANNELS[0]}.\n\n"
