@@ -240,6 +240,10 @@ def create_ydl_opts(temp_dir: str, cookies_path: Optional[str], ffmpeg_path: Opt
         'cookiefile': cookies_path if cookies_path and os.path.exists(cookies_path) else None,
         'progress_hooks': [progress_hook] if progress_hook else None,
         'nocheckcertificate': True,
+        # Allow yt-dlp to bypass geo-restrictions when possible
+        'geo_bypass': True,
+        # Force geo bypass country to US
+        'geo_bypass_country': 'US',
         'quiet': True,
         'no_warnings': True,
         'ffmpeg_location': ffmpeg_path if ffmpeg_path else None,
