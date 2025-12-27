@@ -2,17 +2,21 @@
 from __future__ import annotations
 
 import json
+import time
+import os
 from typing import Dict
 
 from telegram import InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
-from config import LANG_CODES, LANG_INLINE_BUTTONS, LANGUAGES, USER_LANGS_FILE
+from config import LANG_CODES, LANG_INLINE_BUTTONS, LANGUAGES, USER_LANGS_FILE, EXTRA_LINKS
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 user_langs: Dict[int, str] = {}
+# Track /start usage per user for simple rate-limiting
+start_usage: Dict[int, Dict[str, float]] = {}
 
 
 def load_user_langs() -> None:
@@ -77,7 +81,9 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         user_langs[user_id] = lang_code
         save_user_langs()
         logger.info("User %s set language to %s.", user_id, lang_code)
-        await update.message.reply_text(LANGUAGES[lang_code]['start'])
+        base = LANGUAGES[lang_code]['start']
+        extra = EXTRA_LINKS.get(lang_code, EXTRA_LINKS.get('en', ''))
+        await update.message.reply_text(f"{base}\n\n{extra}")
         return
 
     logger.warning("User %s sent invalid language selection: %s.", user_id, lang_name)
@@ -109,18 +115,87 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     save_user_langs()
     logger.info("User %s set language (inline) to %s.", user_id, lang_code)
     try:
-        await query.edit_message_text(LANGUAGES[lang_code]['start'])
+        base = LANGUAGES[lang_code]['start']
+        extra = EXTRA_LINKS.get(lang_code, EXTRA_LINKS.get('en', ''))
+        await query.edit_message_text(f"{base}\n\n{extra}")
     except Exception:
         try:
-            await context.bot.send_message(chat_id=user_id, text=LANGUAGES[lang_code]['start'])
+            base = LANGUAGES[lang_code]['start']
+            extra = EXTRA_LINKS.get(lang_code, EXTRA_LINKS.get('en', ''))
+            await context.bot.send_message(chat_id=user_id, text=f"{base}\n\n{extra}")
         except Exception:
             pass
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Entry point for /start command."""
-    logger.info("User %s issued /start command.", update.effective_user.id)
-    await choose_language(update, context)
+    user_id = update.effective_user.id
+    logger.info("User %s issued /start command.", user_id)
+    now = time.time()
+
+    info = start_usage.get(user_id, {"count": 0, "blocked_until": 0.0})
+
+    # Reset after block expiration
+    if info.get("blocked_until", 0) and info["blocked_until"] <= now:
+        info = {"count": 0, "blocked_until": 0.0}
+
+    # If currently blocked
+    if info.get("blocked_until", 0) > now:
+        wait = int(info["blocked_until"] - now)
+        lang = get_user_lang(user_id)
+        texts = LANGUAGES.get(lang, LANGUAGES["ru"])
+        msg = texts.get("start_rate_limited", "You used /start more than 3 times. Please wait {seconds} seconds.")
+        await update.message.reply_text(msg.format(seconds=wait))
+        start_usage[user_id] = info
+        return
+
+    # Increment count and possibly block
+    info["count"] = info.get("count", 0) + 1
+    if info["count"] > 3:
+        info["blocked_until"] = now + 15
+        start_usage[user_id] = info
+        lang = get_user_lang(user_id)
+        texts = LANGUAGES.get(lang, LANGUAGES["ru"])
+        msg = texts.get("start_rate_limited", "You used /start more than 3 times. Please wait {seconds} seconds.")
+        await update.message.reply_text(msg.format(seconds=15))
+        return
+
+    start_usage[user_id] = info
+
+    # Try to send the GIF with the start caption (if file exists)
+    lang = get_user_lang(user_id)
+    base = LANGUAGES.get(lang, LANGUAGES["ru"]).get("start", "")
+    extra = EXTRA_LINKS.get(lang, EXTRA_LINKS.get("en", ""))
+    caption = f"{base}\n\n{extra}"
+
+    # look for the project's GIF (updated filename); fallback to common names
+    gif_path_candidates = [
+        os.path.join(os.getcwd(), "musicjacker (2).gif"),
+        os.path.join(os.getcwd(), "musicjacker.gif"),
+        os.path.join(os.path.dirname(__file__), "..", "musicjacker (2).gif"),
+        os.path.join(os.path.dirname(__file__), "..", "musicjacker.gif"),
+    ]
+    sent_gif = False
+    for path in gif_path_candidates:
+        try:
+            abs_path = os.path.abspath(path)
+            if os.path.exists(abs_path):
+                with open(abs_path, "rb") as fh:
+                    await update.message.reply_animation(animation=fh, caption=caption)
+                sent_gif = True
+                break
+        except Exception:
+            continue
+
+    # If GIF wasn't sent, fallback to sending text start
+    if not sent_gif:
+        await update.message.reply_text(caption)
+
+    # Then send language chooser
+    try:
+        await choose_language(update, context)
+    except Exception:
+        pass
 
 
 def register(application: Application) -> None:

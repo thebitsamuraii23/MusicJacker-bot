@@ -86,6 +86,7 @@ LANGUAGES = {
         "searching": "Ищу музыку...",
         "unsupported_url_in_search": "Ссылка не поддерживается. Пожалуйста, проверьте другую ссылку или попробуйте другой запрос. (Альтернативно, если у вас не получилось, вы можете загрузить трек от другого исполнителя или Remix)",
         "no_results": "Ничего не найдено. Попробуйте другой запрос.",
+        "start_rate_limited": "Вы использовали /start более 3 раз. Подождите {seconds} секунд и попробуйте снова.",
     "choose_track": "Выберите трек для скачивания в MP3 (128 kbps):",
     "downloading_selected_track": "Скачиваю выбранный трек в MP3 (128 kbps)...",
         "copyright_pre": "⚠️ Внимание! Загружаемый вами материал может быть защищён авторским правом. Используйте только для личных целей. Если вы являетесь правообладателем и считаете, что ваши права нарушены, напишите на copyrightytdlpbot@gmail.com для удаления контента.",
@@ -128,6 +129,7 @@ LANGUAGES = {
         "searching": "Searching for music...",
         "unsupported_url_in_search": "The link is not supported. Please check the link or try another query. (Alternatively, if it didn't work, you can download a track from another artist or Remix)",
         "no_results": "Nothing found. Try another query.",
+        "start_rate_limited": "You used /start more than 3 times. Please wait {seconds} seconds and try again.",
     "choose_track": "Select a track to download in MP3 (128 kbps):",
     "downloading_selected_track": "Downloading the selected track in MP3 (128 kbps)...",
         "copyright_pre": "⚠️ Warning! The material you are about to download may be protected by copyright. Use for personal purposes only. If you are a copyright holder and believe your rights are being violated, please contact copyrightytdlpbot@gmail.com for removal.",
@@ -521,3 +523,18 @@ BOT_COMMANDS = [
     BotCommand("search", "Поиск музыки (YouTube/SoundCloud) / Search music (YouTube/SoundCloud)"),
     BotCommand("copyright", "Информация об авторских правах / Copyright info"),
 ]
+
+# Localized extra lines appended to the `start` message: web version + resume
+EXTRA_LINKS = {
+    "ru": "Веб-версия бота: youtubemusicdownloader.life\nРезюме: samuraizz-resume.github.io/samuraizz-resume",
+    "en": "Web version of the bot: youtubemusicdownloader.life\nResume: samuraizz-resume.github.io/samuraizz-resume\nAdmin GitHub: github.com/thebitsamuraii23",
+    "es": "Versión web del bot: youtubemusicdownloader.life\nCurrículum: samuraizz-resume.github.io/samuraizz-resume\nGitHub del administrador: github.com/thebitsamuraii23",
+    "de": "Web-Version des Bots: youtubemusicdownloader.life\nLebenslauf: samuraizz-resume.github.io/samuraizz-resume\nAdmin-GitHub: github.com/thebitsamuraii23",
+    "tr": "Botun web sürümü: youtubemusicdownloader.life\nÖzgeçmiş: samuraizz-resume.github.io/samuraizz-resume\nAdmin GitHub: github.com/thebitsamuraii23",
+    "az": "Botun veb versiyası: youtubemusicdownloader.life\nCV: samuraizz-resume.github.io/samuraizz-resume\nAdmin GitHub: github.com/thebitsamuraii23",
+    "ar": "النسخة الويب من البوت: youtubemusicdownloader.life\nالسيرة الذاتية: samuraizz-resume.github.io/samuraizz-resume\nGitHub المدير: github.com/thebitsamuraii23",
+    "ja": "ボットのウェブ版: youtubemusicdownloader.life\n履歴書: samuraizz-resume.github.io/samuraizz-resume\n管理者のGitHub: github.com/thebitsamuraii23",
+    "ko": "봇 웹 버전: youtubemusicdownloader.life\n이력서: samuraizz-resume.github.io/samuraizz-resume\n관리자 GitHub: github.com/thebitsamuraii23",
+    "zh": "机器人的网页版: youtubemusicdownloader.life\n简历: samuraizz-resume.github.io/samuraizz-resume\n管理员 GitHub: github.com/thebitsamuraii23",
+    "fr": "Version web du bot: youtubemusicdownloader.life\nCV: samuraizz-resume.github.io/samuraizz-resume\nGitHub de l'admin: github.com/thebitsamuraii23",
+}
