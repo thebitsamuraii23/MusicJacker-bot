@@ -5,6 +5,7 @@ import asyncio
 import io
 import logging
 import os
+import time
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
@@ -18,6 +19,11 @@ from yt_dlp.utils import sanitize_filename
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Кэш для метаданных видео (URL -> {data, timestamp})
+_info_cache: Dict[str, Dict] = {}
+_cache_ttl = 3600  # 1 час
+_cache_lock = asyncio.Lock()
 
 
 @dataclass
@@ -187,7 +193,7 @@ def _embed_metadata(audio_path: str, title: str, artist: str, info: Dict, jpeg_d
         logger.error("Error embedding metadata for %s: %s", audio_path, exc)
 
 
-def _prepare_downloaded_files(temp_dir: str, info: Dict, artist: str, title: str, max_thumb_size: int = 200_000) -> List[Tuple[str, str]]:
+def _prepare_downloaded_files(temp_dir: str, info: Dict, artist: str, title: str, max_thumb_size: int = 100_000) -> List[Tuple[str, str]]:
     audio_files = [f for f in os.listdir(temp_dir) if f.endswith('.mp3')]
     thumbnail_files = [f for f in os.listdir(temp_dir) if f.lower().endswith(('.jpg', '.jpeg', '.webp'))]
 
@@ -236,7 +242,8 @@ def _prepare_downloaded_files(temp_dir: str, info: Dict, artist: str, title: str
 def create_ydl_opts(temp_dir: str, cookies_path: Optional[str], ffmpeg_path: Optional[str], progress_hook: Optional[Callable[[Dict], None]] = None) -> Dict:
     opts: Dict = {
         'outtmpl': os.path.join(temp_dir, '%(id)s.%(ext)s'),
-        'format': 'bestaudio/best',
+        # Приоритет к m4a (быстрее) перед другими форматами для ускорения загрузки
+        'format': 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best',
         'cookiefile': cookies_path if cookies_path and os.path.exists(cookies_path) else None,
         'progress_hooks': [progress_hook] if progress_hook else None,
         'nocheckcertificate': True,
@@ -244,6 +251,7 @@ def create_ydl_opts(temp_dir: str, cookies_path: Optional[str], ffmpeg_path: Opt
         'geo_bypass': True,
         # Force geo bypass country to US
         'geo_bypass_country': 'US',
+        'socket_timeout': 30,  # Таймаут соединения для ускорения на медленных сетях
         'quiet': True,
         'no_warnings': True,
         'ffmpeg_location': ffmpeg_path if ffmpeg_path else None,
@@ -254,9 +262,31 @@ def create_ydl_opts(temp_dir: str, cookies_path: Optional[str], ffmpeg_path: Opt
             'preferredcodec': 'mp3',
             'preferredquality': '128',
         }],
-        'verbose': True,
+        'verbose': False,  # Отключить verbose логи для ускорения
     }
     return {k: v for k, v in opts.items() if v is not None}
+
+
+async def _get_cached_info(url_to_use: str) -> Optional[Dict]:
+    """Получить информацию из кэша или вернуть None если истекло время."""
+    try:
+        async with _cache_lock:
+            cached = _info_cache.get(url_to_use)
+            if cached and (time.time() - cached['timestamp']) < _cache_ttl:
+                logger.debug("Using cached info for %s", url_to_use)
+                return cached['data']
+    except Exception as exc:
+        logger.debug("Cache lookup error: %s", exc)
+    return None
+
+
+async def _cache_info(url_to_use: str, info: Dict) -> None:
+    """Сохранить информацию в кэш."""
+    try:
+        async with _cache_lock:
+            _info_cache[url_to_use] = {'data': info, 'timestamp': time.time()}
+    except Exception as exc:
+        logger.debug("Cache save error: %s", exc)
 
 
 async def download_audio(url: str, temp_dir: str, cookies_path: Optional[str], ffmpeg_path: Optional[str], progress_hook: Optional[Callable[[Dict], None]] = None) -> DownloadResult:
@@ -264,11 +294,20 @@ async def download_audio(url: str, temp_dir: str, cookies_path: Optional[str], f
     url_to_use = convert_to_ytmusic(url)
     logger.info("Starting download for %s (using %s)", url, url_to_use)
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url_to_use, download=False)
+    # Проверяем кэш первым
+    cached_info = await _get_cached_info(url_to_use)
+    if cached_info:
+        info = cached_info
+    else:
+        # Если нет в кэше, загружаем
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url_to_use, download=False)
+        # Сохраняем в кэш для будущего использования
+        await _cache_info(url_to_use, info)
 
     title, artist = _extract_title_and_artist(info)
 
+    # Параллельная загрузка аудио в отдельном потоке
     await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url_to_use)
 
     files = _prepare_downloaded_files(temp_dir, info, artist, title)

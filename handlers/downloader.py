@@ -5,6 +5,7 @@ import asyncio
 import os
 import shutil
 import tempfile
+import time
 import uuid
 from typing import Dict, List, Sequence
 from urllib.parse import quote_plus
@@ -30,6 +31,11 @@ from utils.logger import get_logger
 from utils.yt_downloader import DownloadResult, download_audio
 
 logger = get_logger(__name__)
+
+# Кэш для результатов поиска (query -> {data, timestamp})
+_search_cache: Dict[str, Dict] = {}
+_search_cache_ttl = 600  # 10 минут
+_search_cache_lock = asyncio.Lock()
 
 
 async def check_subscription(user_id: int, bot) -> bool:
@@ -85,10 +91,37 @@ def format_duration(duration_seconds) -> str:
         return ""
 
 
+async def _get_cached_search(query: str) -> List | str | None:
+    """Получить результаты поиска из кэша или вернуть None если истекло время."""
+    try:
+        async with _search_cache_lock:
+            cached = _search_cache.get(query)
+            if cached and (time.time() - cached['timestamp']) < _search_cache_ttl:
+                logger.debug("Using cached search results for %s", query)
+                return cached['data']
+    except Exception as exc:
+        logger.debug("Search cache lookup error: %s", exc)
+    return None
+
+
+async def _cache_search(query: str, results: List | str) -> None:
+    """Сохранить результаты поиска в кэш."""
+    try:
+        async with _search_cache_lock:
+            _search_cache[query] = {'data': results, 'timestamp': time.time()}
+    except Exception as exc:
+        logger.debug("Search cache save error: %s", exc)
+
+
 async def search_youtube(query: str):
     """Perform YouTube search or return 'unsupported_url'."""
     if is_url(query):
         return 'unsupported_url'
+
+    # Проверяем кэш первым
+    cached_results = await _get_cached_search(query)
+    if cached_results is not None:
+        return cached_results
 
     ydl_opts = {
         'quiet': True,
@@ -145,9 +178,13 @@ async def search_youtube(query: str):
 
         if not music_entries:
             logger.info("No results found for query: %s", query)
+            await _cache_search(query, [])
             return []
 
-        return list(music_entries)[:SEARCH_RESULTS_LIMIT]
+        results = list(music_entries)[:SEARCH_RESULTS_LIMIT]
+        # Сохраняем результаты в кэш
+        await _cache_search(query, results)
+        return results
     except yt_dlp.utils.DownloadError as exc:
         if 'Unsupported URL' in str(exc) or 'unsupported url' in str(exc).lower():
             logger.warning("Unsupported URL in search query: %s", query)
@@ -214,27 +251,38 @@ async def handle_download(update_or_query, context: ContextTypes.DEFAULT_TYPE, u
         download_result: DownloadResult = await download_audio(url, temp_dir, cookies_path, ffmpeg, progress_hook)
 
         total_files = len(download_result.files)
-        for index, (file_path, title) in enumerate(download_result.files, start=1):
-            await update_status_message_async(texts['sending_file'].format(index=index, total=total_files))
-            file_size = os.path.getsize(file_path)
-            if file_size > TELEGRAM_FILE_SIZE_LIMIT_BYTES:
-                await context.bot.send_message(chat_id=chat_id, text=f"{texts['too_big']} ({os.path.basename(file_path)})")
-                continue
+        
+        # Отправляем файлы с ограничением на одновременные загрузки (2 максимум)
+        semaphore = asyncio.Semaphore(2)
+        
+        async def send_file_async(index: int, file_path: str, title: str) -> None:
+            async with semaphore:
+                await update_status_message_async(texts['sending_file'].format(index=index, total=total_files))
+                file_size = os.path.getsize(file_path)
+                if file_size > TELEGRAM_FILE_SIZE_LIMIT_BYTES:
+                    await context.bot.send_message(chat_id=chat_id, text=f"{texts['too_big']} ({os.path.basename(file_path)})")
+                    return
 
-            try:
-                with open(file_path, 'rb') as fp:
-                    await context.bot.send_audio(
-                        chat_id=chat_id,
-                        audio=fp,
-                        title=title,
-                        performer=download_result.artist,
-                        filename=os.path.basename(file_path),
-                    )
-                await context.bot.send_message(chat_id=chat_id, text=texts.get('copyright_post'))
-                logger.info("Successfully sent audio for %s to user %s", url, user_id)
-            except Exception as exc:
-                logger.error("Error sending audio file %s to user %s: %s", os.path.basename(file_path), user_id, exc)
-                await context.bot.send_message(chat_id=chat_id, text=f"{texts['error']} (Error sending file {os.path.basename(file_path)})")
+                try:
+                    with open(file_path, 'rb') as fp:
+                        await context.bot.send_audio(
+                            chat_id=chat_id,
+                            audio=fp,
+                            title=title,
+                            performer=download_result.artist,
+                            filename=os.path.basename(file_path),
+                        )
+                    await context.bot.send_message(chat_id=chat_id, text=texts.get('copyright_post'))
+                    logger.info("Successfully sent audio for %s to user %s", url, user_id)
+                except Exception as exc:
+                    logger.error("Error sending audio file %s to user %s: %s", os.path.basename(file_path), user_id, exc)
+                    await context.bot.send_message(chat_id=chat_id, text=f"{texts['error']} (Error sending file {os.path.basename(file_path)})")
+        
+        # Выполняем все отправки параллельно с ограничениями
+        await asyncio.gather(*[
+            send_file_async(index, file_path, title)
+            for index, (file_path, title) in enumerate(download_result.files, start=1)
+        ], return_exceptions=False)
 
         await update_status_message_async(texts['done_audio'], show_cancel_button=False)
 
