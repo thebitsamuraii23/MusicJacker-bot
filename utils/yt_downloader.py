@@ -48,12 +48,90 @@ def convert_to_ytmusic(original_url: str) -> str:
         return original_url
 
 
-def blocking_yt_dlp_download(ydl_opts: Dict, url_to_download: str) -> None:
-    """Perform a blocking yt-dlp download respecting the provided options."""
+def blocking_yt_dlp_download(ydl_opts: Dict, url_to_download: str, max_retries: int = 2) -> None:
+    """
+    Perform a blocking yt-dlp download respecting the provided options.
+    Includes retry logic for common failures (empty files, network issues).
+    """
     yt_logger = logging.getLogger('yt_dlp')
     yt_logger.setLevel(logging.WARNING)
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url_to_download])
+    
+    last_error = None
+    import time
+    temp_dir = ydl_opts.get('outtmpl', '.').rsplit(os.sep, 1)[0]
+    
+    for attempt in range(1, max_retries + 1):
+        files_before = set(os.listdir(temp_dir)) if os.path.exists(temp_dir) else set()
+        
+        try:
+            logger.debug(f"[Download] Attempt {attempt}/{max_retries}: {url_to_download}")
+            logger.debug(f"[Download] Temp dir: {temp_dir}")
+            
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url_to_download])
+            
+            # Verify files were actually created
+            files_after = set(os.listdir(temp_dir)) if os.path.exists(temp_dir) else set()
+            new_files = files_after - files_before
+            
+            if not new_files:
+                raise yt_dlp.utils.DownloadError("No files created after download")
+            
+            # Check for zero-byte or suspiciously small files
+            for f in new_files:
+                fpath = os.path.join(temp_dir, f)
+                if os.path.isfile(fpath):
+                    size = os.path.getsize(fpath)
+                    if size == 0 or (f.endswith('.mp3') and size < 8000):
+                        logger.warning(f"[Download] Suspicious file size: {f} ({size} bytes), retrying...")
+                        try:
+                            os.remove(fpath)
+                        except:
+                            pass
+                        raise yt_dlp.utils.DownloadError(f"Downloaded file too small: {size} bytes")
+                    logger.debug(f"[Download] File created: {f} ({size} bytes)")
+            
+            logger.info(f"[Download] ✓ Successfully downloaded on attempt {attempt}")
+            return  # Success
+            
+        except yt_dlp.utils.DownloadError as exc:
+            error_msg = str(exc).lower()
+            logger.warning(f"[Download] Attempt {attempt} failed: {exc}")
+            
+            # Check if error is retryable
+            retryable_errors = [
+                "empty",
+                "no fragments",
+                "connection",
+                "timeout",
+                "network",
+                "403",
+                "429",
+                "socket",
+                "ssl",
+                "http error",
+                "timed out",
+                "connection reset",
+                "broken pipe",
+                "too small",
+                "no data",
+            ]
+            
+            is_retryable = any(err in error_msg for err in retryable_errors)
+            
+            if not is_retryable or attempt >= max_retries:
+                # Non-retryable or last attempt
+                logger.error(f"[Download] ✗ Error (not retrying): {exc}")
+                raise
+            
+            # Wait before retry
+            wait_time = 2 ** attempt  # Exponential backoff: 2s, 4s
+            logger.info(f"[Download] Retrying in {wait_time}s...")
+            time.sleep(wait_time)
+            
+        except Exception as exc:
+            logger.error(f"[Download] ✗ Unexpected error on attempt {attempt}: {type(exc).__name__}: {exc}")
+            raise
 
 
 def compress_image(image_path, max_size: int = 204_800) -> bytes:
@@ -191,7 +269,29 @@ def _prepare_downloaded_files(temp_dir: str, info: Dict, artist: str, title: str
     audio_files = [f for f in os.listdir(temp_dir) if f.endswith('.mp3')]
     thumbnail_files = [f for f in os.listdir(temp_dir) if f.lower().endswith(('.jpg', '.jpeg', '.webp'))]
 
+    # Validate audio files - check for empty or corrupted files
+    valid_audio_files = []
+    for audio_file in audio_files:
+        audio_path = os.path.join(temp_dir, audio_file)
+        try:
+            file_size = os.path.getsize(audio_path)
+            if file_size < 5000:  # Less than 5KB = likely empty or corrupted
+                logger.warning(f"[Download] Skipping tiny/empty file {audio_file}: {file_size} bytes")
+                try:
+                    os.remove(audio_path)
+                except Exception:
+                    pass
+                continue
+            valid_audio_files.append(audio_file)
+        except Exception as exc:
+            logger.error(f"[Download] Error checking file {audio_file}: {exc}")
+    
+    audio_files = valid_audio_files
+
     if not audio_files:
+        logger.error("[Download] No valid audio files found after validation")
+        all_files = os.listdir(temp_dir)
+        logger.debug(f"[Download] Files in temp dir: {all_files}")
         return []
 
     downloaded: List[Tuple[str, str]] = []
@@ -242,19 +342,33 @@ def create_ydl_opts(temp_dir: str, cookies_path: Optional[str], ffmpeg_path: Opt
         'nocheckcertificate': True,
         # Allow yt-dlp to bypass geo-restrictions when possible
         'geo_bypass': True,
-        # Force geo bypass country to US
         'geo_bypass_country': 'US',
         'quiet': True,
         'no_warnings': True,
         'ffmpeg_location': ffmpeg_path if ffmpeg_path else None,
         'noplaylist': True,
         'writethumbnail': True,
+        # Better socket timeout handling
+        'socket_timeout': 30,
+        # Retry on network errors
+        'retries': 3,
+        # Skip unavailable fragments (better for HLS)
+        'skip_unavailable_fragments': True,
+        # Fragment retries
+        'fragment_retries': 3,
+        # Better error handling
+        'keepvideo': False,
+        'quiet': True,
+        # For HLS streams specifically
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '128',
         }],
-        'verbose': True,
+        'verbose': False,
     }
     return {k: v for k, v in opts.items() if v is not None}
 
