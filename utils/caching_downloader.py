@@ -14,7 +14,7 @@ from telegram.ext import ContextTypes
 
 from utils.cache_manager import (
     MUSIC_DIR, check_cached_file, add_to_cache, get_cache_file_path,
-    _ensure_music_dir
+    _ensure_music_dir, search_cache_by_name
 )
 
 logger = logging.getLogger(__name__)
@@ -92,6 +92,8 @@ class CachingDownloader:
         temp_dir = None
         
         try:
+            logger.info(f"[Download] Starting: {url}")
+            
             # Extract video info
             ydl_opts = {
                 'quiet': True,
@@ -108,24 +110,41 @@ class CachingDownloader:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     return ydl.extract_info(url, download=False)
             
+            logger.debug(f"[Extract] Extracting info from: {url}")
             info = await loop.run_in_executor(None, extract_info)
             
             youtube_id = info.get('id')
             title = info.get('title', 'Unknown')
             artist = info.get('uploader', 'Unknown Artist')
             
+            logger.info(f"[Extract] Got: title='{title}', artist='{artist}', id={youtube_id}")
+            
             if not youtube_id:
+                logger.warning("[Download] Cannot extract video ID")
                 return None, None, "Cannot extract video ID"
             
-            # Check cache first
+            # Check cache first by youtube_id
+            logger.debug(f"[Cache] Checking by youtube_id: {youtube_id}")
             cached_path = check_cached_file(youtube_id)
             if cached_path:
-                logger.info(f"Using cached file for {youtube_id}")
+                logger.info(f"[Cache] HIT by youtube_id: {youtube_id}")
                 return cached_path, youtube_id, title
+            
+            # Check cache by name/artist (fuzzy search)
+            logger.debug(f"[Cache] Checking by name: title='{title}', artist='{artist}'")
+            name_cached = search_cache_by_name(title, artist, threshold=0.6)
+            if name_cached:
+                cached_path, cached_title, cached_artist = name_cached
+                logger.info(f"[Cache] HIT by name: '{title}' -> '{cached_title}'")
+                return cached_path, youtube_id, title  # Return original title but cached file
+            
+            # No cache found, proceed with download
+            logger.info(f"[Download] No cache found, downloading: {title}")
             
             # Create temp directory for download
             temp_dir = tempfile.mkdtemp(prefix="music_dl_")
             output_path = os.path.join(temp_dir, f"audio.mp3")
+            logger.debug(f"[Download] Temp dir: {temp_dir}")
             
             # Prepare download options
             ydl_opts = self._get_ydl_opts(output_path)
@@ -141,35 +160,39 @@ class CachingDownloader:
                         percent = data.get('_percent_str', 'N/A').strip()
                         speed = data.get('_speed_str', 'N/A').strip()
                         eta = data.get('_eta_str', 'N/A').strip()
+                        logger.debug(f"[Progress] {percent} | {speed} | ETA: {eta}")
                         try:
                             asyncio.run_coroutine_threadsafe(
                                 progress_callback(percent, speed, eta),
                                 loop
                             )
                         except Exception as exc:
-                            logger.debug(f"Progress callback error: {exc}")
+                            logger.debug(f"[Progress] Callback error: {exc}")
             
             ydl_opts['progress_hooks'] = [progress_hook]
             
             # Download in executor
+            logger.info(f"[Download] Starting download: {url}")
             def download_audio():
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     ydl.download([url])
                 return output_path
             
             downloaded_file = await loop.run_in_executor(None, download_audio)
+            logger.info(f"[Download] Download completed")
             
             # Check if file was created
             if not os.path.exists(downloaded_file):
-                logger.error(f"Download completed but file not found: {downloaded_file}")
+                logger.error(f"[Download] File not found after download: {downloaded_file}")
                 return None, youtube_id, "Downloaded file not found on disk"
             
             file_size = os.path.getsize(downloaded_file)
-            logger.info(f"Downloaded {title}: {file_size} bytes")
+            file_size_mb = round(file_size / (1024 * 1024), 2)
+            logger.info(f"[Download] Downloaded '{title}': {file_size_mb} MB ({file_size} bytes)")
             
             # Check file size
             if file_size > TELEGRAM_FILE_SIZE_LIMIT_BYTES:
-                logger.warning(f"File too large: {file_size} bytes for {youtube_id}")
+                logger.warning(f"[Size] File too large: {file_size_mb} MB > 50 MB for {youtube_id}")
                 # Clean up temp file
                 try:
                     os.remove(downloaded_file)
@@ -178,34 +201,42 @@ class CachingDownloader:
                 return None, youtube_id, f"FILE_TOO_LARGE"
             
             # Move to cache directory
+            logger.debug(f"[Cache] Moving file to cache directory")
             _ensure_music_dir()
             cache_path = get_cache_file_path(artist, title, youtube_id)
+            logger.info(f"[Cache] Target path: {cache_path}")
             
             try:
                 # Ensure unique filename
                 if os.path.exists(cache_path):
-                    logger.warning(f"Cache file already exists: {cache_path}")
+                    logger.warning(f"[Cache] File already exists: {cache_path}")
                 else:
                     os.rename(downloaded_file, cache_path)
-                    logger.info(f"Cached file: {cache_path}")
+                    logger.info(f"[Cache] ✅ File moved to: {cache_path}")
             except Exception as exc:
-                logger.error(f"Failed to move file to cache: {exc}")
+                logger.error(f"[Cache] Failed to move file: {exc}")
                 # Try copying instead
                 try:
                     import shutil
+                    logger.debug(f"[Cache] Trying copy instead of move...")
                     shutil.copy2(downloaded_file, cache_path)
                     os.remove(downloaded_file)
+                    logger.info(f"[Cache] ✅ File copied to: {cache_path}")
                 except Exception as exc2:
-                    logger.error(f"Failed to copy file: {exc2}")
+                    logger.error(f"[Cache] Failed to copy file: {exc2}")
                     return None, youtube_id, "Failed to save file to cache"
             
             # Add to database
+            logger.debug(f"[DB] Adding entry: {youtube_id}")
             add_to_cache(youtube_id, cache_path, title, artist)
+            logger.info(f"[DB] ✅ Added to database: {youtube_id}")
             
+            logger.info(f"[Success] ✅ Complete: {title} ({file_size_mb}MB) cached successfully")
             return cache_path, youtube_id, title
         
         except yt_dlp.utils.DownloadError as exc:
             error_msg = str(exc).lower()
+            logger.error(f"[Error] yt-dlp error: {exc}")
             if 'not available' in error_msg or 'removed' in error_msg:
                 return None, None, "VIDEO_NOT_AVAILABLE"
             elif 'geo' in error_msg or 'country' in error_msg:
@@ -213,11 +244,10 @@ class CachingDownloader:
             elif 'private' in error_msg:
                 return None, None, "VIDEO_PRIVATE"
             else:
-                logger.error(f"yt-dlp DownloadError: {exc}")
                 return None, None, f"Download error: {str(exc)[:100]}"
         
         except Exception as exc:
-            logger.error(f"Unexpected error during download: {exc}", exc_info=True)
+            logger.error(f"[Error] Unexpected error during download: {exc}", exc_info=True)
             return None, None, f"Unexpected error: {str(exc)[:100]}"
         
         finally:

@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import os
+import logging
 from typing import Optional, Tuple
 from telegram import Update, InputFile
 from telegram.ext import ContextTypes
 
 from utils.cache_manager import check_cached_file, MUSIC_DIR
 from utils.caching_downloader import CachingDownloader, TELEGRAM_FILE_SIZE_LIMIT_BYTES
+
+logger = logging.getLogger(__name__)
 
 
 async def send_cached_or_download_audio(
@@ -44,8 +47,11 @@ async def send_cached_or_download_audio(
         )
     """
     chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    logger.info(f"[User {user_id}] Processing request: {query[:100]}")
     
     if not downloader:
+        logger.error(f"[User {user_id}] Downloader not initialized")
         await context.bot.send_message(
             chat_id=chat_id,
             text=texts.get("error", "Error") + " (Downloader not initialized)"
@@ -70,6 +76,7 @@ async def send_cached_or_download_audio(
                 pass
         
         # Download and cache
+        logger.debug(f"[User {user_id}] Starting download/cache lookup")
         file_path, youtube_id, result = await downloader.download_and_cache(
             url=query,
             update=update,
@@ -88,6 +95,7 @@ async def send_cached_or_download_audio(
         # Handle results
         if file_path and os.path.exists(file_path):
             # File ready - send it
+            logger.info(f"[User {user_id}] ✅ Sending audio file: {file_path}")
             try:
                 with open(file_path, 'rb') as audio_file:
                     await context.bot.send_audio(
@@ -97,8 +105,10 @@ async def send_cached_or_download_audio(
                         read_timeout=30,
                         write_timeout=30,
                     )
+                logger.info(f"[User {user_id}] ✅ Audio sent successfully")
                 return True
             except Exception as exc:
+                logger.error(f"[User {user_id}] ❌ Failed to send file: {exc}")
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=f"❌ {texts.get('error', 'Error')}: Failed to send file"
@@ -107,6 +117,7 @@ async def send_cached_or_download_audio(
         
         elif result == "FILE_TOO_LARGE" and youtube_id:
             # File too large for Telegram
+            logger.warning(f"[User {user_id}] ⚠️ File too large (>50MB)")
             youtube_url = f"https://youtu.be/{youtube_id}"
             msg = (
                 "⚠️ " + texts.get("file_too_large", "File too large (>50 MB)") +
@@ -116,6 +127,7 @@ async def send_cached_or_download_audio(
             return False
         
         elif result == "VIDEO_NOT_AVAILABLE":
+            logger.warning(f"[User {user_id}] ❌ Video not available")
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="❌ " + texts.get("video_not_available", "Video not available or removed")
@@ -123,6 +135,7 @@ async def send_cached_or_download_audio(
             return False
         
         elif result == "GEO_BLOCKED":
+            logger.warning(f"[User {user_id}] ❌ Video geo-blocked")
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="❌ " + texts.get("geo_blocked", "Video not available in your region")
@@ -130,6 +143,7 @@ async def send_cached_or_download_audio(
             return False
         
         elif result == "VIDEO_PRIVATE":
+            logger.warning(f"[User {user_id}] ❌ Video private")
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="❌ " + texts.get("video_private", "Video is private")
@@ -138,6 +152,7 @@ async def send_cached_or_download_audio(
         
         else:
             # Other error
+            logger.error(f"[User {user_id}] ❌ Error: {result}")
             error_msg = str(result)[:200] if result else "Unknown error"
             await context.bot.send_message(
                 chat_id=chat_id,
