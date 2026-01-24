@@ -48,17 +48,22 @@ def convert_to_ytmusic(original_url: str) -> str:
         return original_url
 
 
-def blocking_yt_dlp_download(ydl_opts: Dict, url_to_download: str, max_retries: int = 2) -> None:
+def blocking_yt_dlp_download(ydl_opts: Dict, url_to_download: str, temp_dir: str, max_retries: int = 2) -> None:
     """
     Perform a blocking yt-dlp download respecting the provided options.
     Includes retry logic for common failures (empty files, network issues).
+    
+    Args:
+        ydl_opts: yt-dlp options dictionary
+        url_to_download: URL to download from
+        temp_dir: Temporary directory for downloads
+        max_retries: Number of retries on transient failures (default: 2)
     """
     yt_logger = logging.getLogger('yt_dlp')
     yt_logger.setLevel(logging.WARNING)
     
     last_error = None
     import time
-    temp_dir = ydl_opts.get('outtmpl', '.').rsplit(os.sep, 1)[0]
     
     for attempt in range(1, max_retries + 1):
         files_before = set(os.listdir(temp_dir)) if os.path.exists(temp_dir) else set()
@@ -383,7 +388,7 @@ async def download_audio(url: str, temp_dir: str, cookies_path: Optional[str], f
 
     title, artist = _extract_title_and_artist(info)
 
-    await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url_to_use)
+    await asyncio.to_thread(blocking_yt_dlp_download, ydl_opts, url_to_use, temp_dir)
 
     files = _prepare_downloaded_files(temp_dir, info, artist, title)
     if not files:
